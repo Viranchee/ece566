@@ -3,7 +3,7 @@
 #include "llvm-c/Core.h"
 #include "calc.y.h"
 %}
-
+%option debug
 %option noyywrap
 
 %%
