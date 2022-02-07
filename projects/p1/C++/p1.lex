@@ -36,6 +36,9 @@ using namespace llvm;
 in            { return IN; }
 final         { return FINAL; }
 none          { return NONE;  }
+reduce        { return REDUCE; }
+expand        { return EXPAND; }
+slice         { return SLICE; }
 
 [a-zA-Z]+     { yylval.id = strdup(yytext); return ID; }
 [0-9]+        { yylval.num = atoi(yytext); return NUMBER; }
@@ -44,6 +47,8 @@ none          { return NONE;  }
 "]"           { return RBRACKET; }
 "("           { return LPAREN; }
 ")"           { return RPAREN; }
+"{"           { return LBRACE; }
+"}"           { return RBRACE; }
 
 "="           { return ASSIGN; }
 "*"           { return MUL; }
@@ -61,7 +66,8 @@ none          { return NONE;  }
 
 
 ","           { return COMMA; }
-
+"."           { return DOT; }
+":"           { return COLON; }
 \n            { return ENDLINE; }
 
 
