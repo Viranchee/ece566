@@ -31,43 +31,43 @@ using namespace llvm;
 
 %%
 
-[ \t]         //ignore
+[ \t\r]         //ignore
 
-in            { return ERROR; }
-final         { return ERROR; }
-none          { return ERROR;  }
+in            { return IN; }
+final         { return FINAL; }
+none          { return NONE;  }
 
-[a-zA-Z]+     { return ERROR; }
-[0-9]+        { return ERROR; }
+[a-zA-Z]+     { yylval.id = strdup(yytext); return ID; }
+[0-9]+        { yylval.num = atoi(yytext); return NUMBER; }
 
-"["           { return ERROR; }
-"]"           { return ERROR; }
-"("           { return ERROR; }
-")"           { return ERROR; }
+"["           { return LBRACKET; }
+"]"           { return RBRACKET; }
+"("           { return LPAREN; }
+")"           { return RPAREN; }
 
-"="           { return ERROR; }
-"*"           { return ERROR; }
-"%"           { return ERROR; }
-"/"           { return ERROR; }
-"+"           { return ERROR; }
-"-"           { return ERROR; }
+"="           { return ASSIGN; }
+"*"           { return MUL; }
+"%"           { return MOD; }
+"/"           { return DIV; }
+"+"           { return PLUS; }
+"-"           { return MINUS; }
 
-"^"           { return ERROR; }
-"|"           { return ERROR; }
-"&"           { return ERROR; }
+"^"           { return XOR; }
+"|"           { return OR; }
+"&"           { return AND; }
 
-"~"           { return ERROR; }
-"!"           { return ERROR; }
-
-
-","           { return ERROR; }
-
-\n            { return ERROR; }
+"~"           { return INV; }
+"!"           { return BINV; }
 
 
-"//".*\n      { }
+","           { return COMMA; }
 
-.             { return ERROR; }
+\n            { return ENDLINE; }
+
+
+"//".*\n      {}
+
+.             {printf("syntax error!\n"); exit(1); }
 %%
 
 int yywrap()
