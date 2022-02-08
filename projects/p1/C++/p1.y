@@ -40,7 +40,7 @@ IRBuilder<> Builder(TheContext);
 
 %union {
   vector<string> *params_list;
-  int num;
+  unsigned int num;
   char* id;
 }
 
