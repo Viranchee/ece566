@@ -2,3 +2,6 @@ build
 cmake-build-*
 mac-build
 .vscode
+p1.lex.cpp
+p1.y.cpp
+p1.y.hpp
