@@ -42,16 +42,23 @@ IRBuilder<> Builder(TheContext);
   vector<string> *params_list;
   int num;
   char* id;
+  Value *val;
 }
 
 /*%define parse.trace*/
 
 %type <params_list> params_list
 
+%type <val> expr
+%type <val> final
+%type <val> bitslice
+%type <val> bitslice_list
+%type <val> bitslice_list_helper
+
 %token IN FINAL SLICE
 %token ERROR
-%token NUMBER
-%token ID 
+%token <num> NUMBER
+%token <id> ID
 %token BINV INV PLUS MINUS XOR AND OR MUL DIV MOD
 %token COMMA ENDLINE ASSIGN LBRACKET RBRACKET LPAREN RPAREN NONE COLON
 %token LBRACE RBRACE DOT
