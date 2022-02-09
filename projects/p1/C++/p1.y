@@ -135,8 +135,7 @@ params_list: ID
 
 final: FINAL expr ENDLINE
 {
-  // FIX ME, ALWAYS RETURNS 0
-  Builder.CreateRet(Builder.getInt32(0));
+  Builder.CreateRet($2);
 }
 ;
 
@@ -162,6 +161,9 @@ field : ID COLON expr
 ;
 
 expr: bitslice
+{
+  $$ = $1;
+}
 | expr PLUS expr
 | expr MINUS expr
 | expr XOR expr
@@ -182,7 +184,13 @@ expr: bitslice
 
 bitslice: ID
 | NUMBER
+{
+  $$ = Builder.getInt32($1);
+}
 | bitslice_list
+{
+  $$ = $1;
+}
 | LPAREN expr RPAREN
 | bitslice NUMBER
 | bitslice DOT ID
@@ -192,10 +200,19 @@ bitslice: ID
 ;
 
 bitslice_list: LBRACE bitslice_list_helper RBRACE
+{
+  $$ = $2;
+}
 ;
 
 bitslice_list_helper:  bitslice
+{
+  $$ = $1;
+}
 | bitslice_list_helper COMMA bitslice
+{
+  $$ = Builder.CreateAdd(Builder.CreateMul(Builder.getInt32(2),$1),$3);
+}
 ;
 
 bitslice_lhs: ID
