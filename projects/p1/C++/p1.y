@@ -135,6 +135,7 @@ params_list: ID
 
 final: FINAL expr ENDLINE
 {
+  // Create a return instruction returning the value of the expression
   Builder.CreateRet($2);
 }
 ;
@@ -162,6 +163,7 @@ field : ID COLON expr
 
 expr: bitslice
 {
+  // return bitslice
   $$ = $1;
 }
 | expr PLUS expr
@@ -185,10 +187,12 @@ expr: bitslice
 bitslice: ID
 | NUMBER
 {
+  // Convert Number to LLVM type and return it
   $$ = Builder.getInt32($1);
 }
 | bitslice_list
 {
+  // return bitslice_list
   $$ = $1;
 }
 | LPAREN expr RPAREN
@@ -201,16 +205,19 @@ bitslice: ID
 
 bitslice_list: LBRACE bitslice_list_helper RBRACE
 {
+  // return bitslice_list_helper
   $$ = $2;
 }
 ;
 
 bitslice_list_helper:  bitslice
 {
+  // return bitslice
   $$ = $1;
 }
 | bitslice_list_helper COMMA bitslice
 {
+  // Left shift value by doubling it, and add the new value.
   $$ = Builder.CreateAdd(Builder.CreateMul(Builder.getInt32(2),$1),$3);
 }
 ;
