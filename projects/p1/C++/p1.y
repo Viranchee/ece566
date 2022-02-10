@@ -35,7 +35,30 @@ string funName;
 Module *M;
 LLVMContext TheContext;
 IRBuilder<> Builder(TheContext);
- 
+
+map <string*, Value*> symbolTable;
+
+// Create a function which adds a value to the symbolTable
+void addToSymbolTable(string* name, Value* value) {
+  symbolTable[name] = value;
+}
+
+// Create a function which returns a value from the symbolTable
+Value* getFromSymbolTable(string* name) {
+  return symbolTable[name];
+}
+
+// Create a function which checks if key is in the symbolTable and returns true if it is
+bool isInSymbolTable(string* name) {
+  return symbolTable.find(name) != symbolTable.end();
+}
+
+// Create a function to retrive a bit from an integer
+Value* getBit(Value* value, int bit) {
+  return Builder.CreateAnd(Builder.CreateLShr(value, bit), Builder.getInt32(1));
+}
+
+
 %}
 
 %union {
@@ -54,7 +77,7 @@ IRBuilder<> Builder(TheContext);
 %type <val> bitslice
 %type <val> bitslice_list
 %type <val> bitslice_list_helper
-%type <val> bitslice_lhs
+%type <id> bitslice_lhs
 
 %type <val> field
 %type <val> field_list
