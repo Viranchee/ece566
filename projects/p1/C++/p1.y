@@ -39,7 +39,7 @@ IRBuilder<> Builder(TheContext);
 
 // Dictionary
 unordered_map <string, Value*> values;
-unordered_map <string, int> slices;
+unordered_map <string, Value*> slices;
 
 // Bit manipulation instructions
 
