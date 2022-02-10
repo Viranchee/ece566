@@ -212,8 +212,14 @@ bitslice:             ID { $$ = values[(string)$1];}
                       | NUMBER { $$ = Builder.getInt32($1);}
                       | bitslice_list { $$ = $1;}
                       | LPAREN expr RPAREN { $$ = $2;}
-                      | bitslice DOT ID { printf("bitslice DOT ID\n"); }
                       | bitslice NUMBER { $$ = getBit($1,Builder.getInt32($2));}
+                      | bitslice DOT ID 
+                      {
+                        // Get value of ID from slices dictionary
+                        Value* offset = slices[(string)$3];
+                        // Get id bit from bitslice
+                        $$ = getBit($1, offset);
+                      }
 // 566 only
                       | bitslice LBRACKET expr RBRACKET { printf("bitslice LBRACKET expr RBRACKET\n"); }
                       | bitslice LBRACKET expr COLON expr RBRACKET { printf("bitslice LBRACKET expr COLON expr RBRACKET\n"); }
