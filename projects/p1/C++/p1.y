@@ -36,8 +36,10 @@ Module *M;
 LLVMContext TheContext;
 IRBuilder<> Builder(TheContext);
 
+// Dictionary
 map <string, Value*> symbolTable;
 
+// Dictionary helper functions
 // Create a function which adds a value to the symbolTable
 void addToSymbolTable(string name, Value* value) {
   symbolTable[name] = value;
@@ -53,6 +55,8 @@ bool isInSymbolTable(string name) {
   return symbolTable.find(name) != symbolTable.end();
 }
 
+// Bit manipulation instructions
+
 // Create a function to retrive a bit from an integer
 Value* getBit(Value* value, int bit) {
   return Builder.CreateAnd(Builder.CreateLShr(value, bit), Builder.getInt32(1));
@@ -61,6 +65,18 @@ Value* getBit(Value* value, int bit) {
 // Get lowest bit from integer
 Value* getLowestBit(Value* value) {
   return getBit(value, 0);
+}
+Value* do_leftshiftbyn_add(Value* value, Value* shift, Value* add) {
+  return Builder.CreateAdd(Builder.CreateShl(value, shift), add);
+}
+Value* do_leftshiftbyn_add(Value* value, int shift, Value* add) {
+  // Left shift $1 by 1, add $3 to it
+  return do_leftshiftbyn_add(value, Builder.getInt32(shift), add);
+}
+
+void do_assign_addtodict(char* key, Value* value) { 
+  string s(key); 
+  symbolTable[key] = value; 
 }
 
 %}
@@ -168,119 +184,73 @@ params_list: ID
 }
 ;
 
-final: FINAL expr ENDLINE
-{
-  // Create a return instruction returning the value of the expression
-  Builder.CreateRet($2);
-}
-;
+final: FINAL expr ENDLINE { Builder.CreateRet($$); }
+      ;
 
 statements_opt: %empty
             | statements;
 
 statements:   statement 
             | statements statement 
-;
+            ;
 
-statement: bitslice_lhs ASSIGN expr ENDLINE
-{
-  string s($1);
-  symbolTable[s] = $3;
-}
-| SLICE field_list ENDLINE
-;
+statement: bitslice_lhs ASSIGN expr ENDLINE { do_assign_addtodict($1, $3); }
+          | SLICE field_list ENDLINE
+          ;
 
 field_list : field_list COMMA field
            | field
 ;
 
 field : ID COLON expr
-| ID LBRACKET expr RBRACKET COLON expr
+      | ID LBRACKET expr RBRACKET COLON expr
 // 566 only below
-| ID
-;
+      | ID
+      ;
 
-expr: bitslice
-{
-  // return bitslice
-  $$ = $1;
-}
-| expr PLUS expr
-| expr MINUS expr
-| expr XOR expr
-{
-  // Return XOR of Builder
-  $$ = Builder.CreateXor($1, $3);
-}
-| expr AND expr
-| expr OR expr
-| INV expr
-| BINV expr
-| expr MUL expr
-| expr DIV expr
-| expr MOD expr
+expr: bitslice  { $$ = $1; }
+      | expr PLUS expr
+      | expr MINUS expr
+      | expr XOR expr {$$ = Builder.CreateXor($1, $3);}
+      | expr AND expr
+      | expr OR expr
+      | INV expr
+      | BINV expr
+      | expr MUL expr
+      | expr DIV expr
+      | expr MOD expr
 /* 566 only */
-| REDUCE AND LPAREN expr RPAREN
-| REDUCE OR LPAREN expr RPAREN
-| REDUCE XOR LPAREN expr RPAREN
-| REDUCE PLUS LPAREN expr RPAREN
-| EXPAND LPAREN expr RPAREN
-;
+      | REDUCE AND LPAREN expr RPAREN
+      | REDUCE OR LPAREN expr RPAREN
+      | REDUCE XOR LPAREN expr RPAREN
+      | REDUCE PLUS LPAREN expr RPAREN
+      | EXPAND LPAREN expr RPAREN
+      ;
 
-bitslice: ID
-{
-    $$ = getFromSymbolTable((string)$1);
-}
-| NUMBER
-{
-  // Convert Number to LLVM type and return it
-  $$ = Builder.getInt32($1);
-}
-| bitslice_list
-{
-  // return bitslice_list
-  $$ = $1;
-}
-| LPAREN expr RPAREN
-| bitslice NUMBER
-{
-  // Use Offset here
-  $$ = getBit($1,$2);
-}
-| bitslice DOT ID
+bitslice: ID { $$ = getFromSymbolTable((string)$1);}
+        | NUMBER { $$ = Builder.getInt32($1);}
+        | bitslice_list { $$ = $1;}
+        | LPAREN expr RPAREN { $$ = $2;}
+        | bitslice NUMBER { $$ = getBit($1,$2);}
+        | bitslice DOT ID
 // 566 only
-| bitslice LBRACKET expr RBRACKET
-| bitslice LBRACKET expr COLON expr RBRACKET
+        | bitslice LBRACKET expr RBRACKET
+        | bitslice LBRACKET expr COLON expr RBRACKET
+        ;
+
+bitslice_list: LBRACE bitslice_list_helper RBRACE { $$ = $2;}
+            ;
+
+bitslice_list_helper:  bitslice { $$ = getLowestBit($1); }
+                      | bitslice_list_helper COMMA bitslice { $$ = do_leftshiftbyn_add($1,1,$3); }
 ;
 
-bitslice_list: LBRACE bitslice_list_helper RBRACE
-{
-  // return bitslice_list_helper
-  $$ = $2;
-}
-;
-
-bitslice_list_helper:  bitslice
-{
-  // return bitslice
-  $$ = getLowestBit($1);
-}
-| bitslice_list_helper COMMA bitslice
-{
-  // Left shift $1 by 1, add $3 to it
-  $$ = Builder.CreateAdd(Builder.CreateShl($1, Builder.getInt32(1), "shl"), $3, "add");
-}
-;
-
-bitslice_lhs: ID
-{
-  $$ = $1;
-}
-| bitslice_lhs NUMBER
-| bitslice_lhs DOT ID
+bitslice_lhs: ID { $$ = $1; }
+            | bitslice_lhs NUMBER
+            | bitslice_lhs DOT ID
 // 566 only
-| bitslice_lhs LBRACKET expr RBRACKET
-| bitslice_lhs LBRACKET expr COLON expr RBRACKET
+            | bitslice_lhs LBRACKET expr RBRACKET
+            | bitslice_lhs LBRACKET expr COLON expr RBRACKET
 ;
 
 %%
