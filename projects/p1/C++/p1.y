@@ -3,6 +3,7 @@
 #include <list>
 #include <vector>
 #include <map>
+#include <unordered_map>
 #include <iostream>
 #include <string>
 #include <memory>
@@ -37,7 +38,7 @@ LLVMContext TheContext;
 IRBuilder<> Builder(TheContext);
 
 // Dictionary
-map <string, Value*> symbolTable;
+unordered_map <string, Value*> symbolTable;
 
 // Dictionary helper functions
 // Create a function which adds a value to the symbolTable
