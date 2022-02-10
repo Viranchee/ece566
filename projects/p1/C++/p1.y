@@ -48,14 +48,13 @@ Value* getRange(Value* value, int start, int length) {
   return Builder.CreateLShr(Builder.CreateAnd(value, Builder.getInt32(pow(2, length) - 1)), start);
 }
 
-// Create a function to retrive a bit from an integer
-Value* getBit(Value* value, int bit) {
+// Create a function to retrive a bit from llvm builder value
+Value* getBit(Value* value, Value* bit) {
   return Builder.CreateAnd(Builder.CreateLShr(value, bit), Builder.getInt32(1));
 }
-
 // Get lowest bit from integer
 Value* getLowestBit(Value* value) {
-  return getBit(value, 0);
+  return getBit(value, Builder.getInt32(0));
 }
 Value* do_leftshiftbyn_add(Value* value, Value* shift, Value* add) {
   return Builder.CreateAdd(Builder.CreateShl(value, shift), add);
@@ -213,8 +212,8 @@ bitslice:             ID { $$ = values[(string)$1];}
                       | NUMBER { $$ = Builder.getInt32($1);}
                       | bitslice_list { $$ = $1;}
                       | LPAREN expr RPAREN { $$ = $2;}
-                      | bitslice NUMBER { $$ = getBit($1,$2);}
                       | bitslice DOT ID { printf("bitslice DOT ID\n"); }
+                      | bitslice NUMBER { $$ = getBit($1,Builder.getInt32($2));}
 // 566 only
                       | bitslice LBRACKET expr RBRACKET { printf("bitslice LBRACKET expr RBRACKET\n"); }
                       | bitslice LBRACKET expr COLON expr RBRACKET { printf("bitslice LBRACKET expr COLON expr RBRACKET\n"); }
