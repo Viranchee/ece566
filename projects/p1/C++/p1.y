@@ -126,11 +126,7 @@ void do_assign_addtodict(char* key, Value* value) {
 
 %%
 
-program: inputs statements_opt final
-{
-  YYACCEPT;
-}
-;
+program:              inputs statements_opt final { YYACCEPT;}
 
 inputs:               IN params_list ENDLINE
                       {  
