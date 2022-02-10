@@ -67,7 +67,7 @@ Value* do_leftshiftbyn_add(Value* value, int shift, Value* add) {
 
 void do_assign_addtodict(char* key, Value* value) { 
   string s(key);
-  insertInDict(s, value);
+  values[s] = value;
 }
 
 %}
