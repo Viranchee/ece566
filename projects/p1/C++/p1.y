@@ -195,16 +195,21 @@ field :               ID COLON expr { slices[(string)$1] = $3; }
                       ;
 
 expr:                 bitslice  { $$ = $1; }
-                      | expr PLUS expr
-                      | expr MINUS expr
-                      | expr XOR expr {$$ = Builder.CreateXor($1, $3);}
-                      | expr AND expr
-                      | expr OR expr
-                      | INV expr
-                      | BINV expr
-                      | expr MUL expr
-                      | expr DIV expr
-                      | expr MOD expr
+                      | expr PLUS expr    { $$ = Builder.CreateAdd($1, $3); }
+                      | expr MINUS expr   { $$ = Builder.CreateSub($1, $3); }
+                      | expr XOR expr     { $$ = Builder.CreateXor($1, $3); }
+                      | expr AND expr     { $$ = Builder.CreateAnd($1, $3); }
+                      | expr OR expr      { $$ = Builder.CreateOr($1, $3); }
+                      | INV expr          { $$ = Builder.CreateNot($2); }
+                      | BINV expr 
+                      {
+                        // Flip the LSB, by using XOR operation with 1
+                        Value* one = Builder.getInt32(1);
+                        $$ = Builder.CreateXor($2, one);
+                      }
+                      | expr MUL expr     {$$ = Builder.CreateMul($1, $3);}
+                      | expr DIV expr     {$$ = Builder.CreateSDiv($1, $3);}
+                      | expr MOD expr     {$$ = Builder.CreateSRem($1, $3);}
 /* 566 only */
                       | REDUCE AND LPAREN expr RPAREN
                       | REDUCE OR LPAREN expr RPAREN
