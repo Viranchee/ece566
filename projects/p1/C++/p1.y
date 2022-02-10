@@ -183,7 +183,7 @@ field_list :          field_list COMMA field { printf("field_list COMMA field\n"
                       | field { printf("field\n"); }
 ;
 
-field :               ID COLON expr { printf("ID COLON expr\n"); }
+field :               ID COLON expr { slices[(string)$1] = $3; }
                       | ID LBRACKET expr RBRACKET COLON expr { printf("ID LBRACKET expr RBRACKET COLON expr\n"); }
 // 566 only below
                       | ID { printf("ID\n"); }
