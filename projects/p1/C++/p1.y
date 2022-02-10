@@ -36,20 +36,20 @@ Module *M;
 LLVMContext TheContext;
 IRBuilder<> Builder(TheContext);
 
-map <string*, Value*> symbolTable;
+map <string, Value*> symbolTable;
 
 // Create a function which adds a value to the symbolTable
-void addToSymbolTable(string* name, Value* value) {
+void addToSymbolTable(string name, Value* value) {
   symbolTable[name] = value;
 }
 
 // Create a function which returns a value from the symbolTable
-Value* getFromSymbolTable(string* name) {
+Value* getFromSymbolTable(string name) {
   return symbolTable[name];
 }
 
 // Create a function which checks if key is in the symbolTable and returns true if it is
-bool isInSymbolTable(string* name) {
+bool isInSymbolTable(string name) {
   return symbolTable.find(name) != symbolTable.end();
 }
 
@@ -179,6 +179,10 @@ statements:   statement
 ;
 
 statement: bitslice_lhs ASSIGN expr ENDLINE
+{
+  string s($1);
+  symbolTable[s] = $3;
+}
 | SLICE field_list ENDLINE
 ;
 
@@ -217,16 +221,7 @@ expr: bitslice
 
 bitslice: ID
 {
-  // ID is a char pointer. bitslice is an expression. ID will be stored in the symbolTable. Retrive it.
-
-  // Check if ID is in symbolTable using isInSymbolTable
-  if(isInSymbolTable((string*)$1)) {
-    // If it is, return the value from symbolTable
-    $$ = getFromSymbolTable((string*)$1);
-  } else {
-    // If it is not, throw an error
-    yyerror("bitslice_lhs not in symbol table");
-  }
+    $$ = getFromSymbolTable((string)$1);
 }
 | NUMBER
 {
@@ -240,6 +235,10 @@ bitslice: ID
 }
 | LPAREN expr RPAREN
 | bitslice NUMBER
+{
+  // Use Offset here
+  $$ = getBit($1,$2);
+}
 | bitslice DOT ID
 // 566 only
 | bitslice LBRACKET expr RBRACKET
@@ -266,6 +265,9 @@ bitslice_list_helper:  bitslice
 ;
 
 bitslice_lhs: ID
+{
+  $$ = $1;
+}
 | bitslice_lhs NUMBER
 | bitslice_lhs DOT ID
 // 566 only
