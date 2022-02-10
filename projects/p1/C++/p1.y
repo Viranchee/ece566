@@ -130,7 +130,10 @@ inputs:               IN params_list ENDLINE
                         int arg_no=0;
                         for(auto &a: Function->args()) {
                           // iterate over arguments of function
+                          // get first element from vector $2, 
+                          values[$2->at(arg_no)] = &a;
                           // match name to position
+                          arg_no++;
                         }
                         
                         //Add a basic block to main to hold instructions, and set Builder
@@ -158,10 +161,12 @@ params_list:          ID
                       {
                         $$ = new vector<string>;
                         // add ID to vector
+                        $$->push_back(string($1));
                       }
                       | params_list COMMA ID
                       {
                         // add ID to $1
+                        $$->push_back(string($3));
                       }
                       ;
 
