@@ -132,59 +132,59 @@ program: inputs statements_opt final
 }
 ;
 
-inputs:   IN params_list ENDLINE
-{  
-  std::vector<Type*> param_types;
-  for(auto s: *$2)
-    {
-      param_types.push_back(Builder.getInt32Ty());
-    }
-  ArrayRef<Type*> Params (param_types);
-  
-  // Create int function type with no arguments
-  FunctionType *FunType = 
-    FunctionType::get(Builder.getInt32Ty(),Params,false);
+inputs:               IN params_list ENDLINE
+                      {  
+                        std::vector<Type*> param_types;
+                        for(auto s: *$2)
+                          {
+                            param_types.push_back(Builder.getInt32Ty());
+                          }
+                        ArrayRef<Type*> Params (param_types);
+                        
+                        // Create int function type with no arguments
+                        FunctionType *FunType = 
+                          FunctionType::get(Builder.getInt32Ty(),Params,false);
 
-  // Create a main function
-  Function *Function = Function::Create(FunType,GlobalValue::ExternalLinkage,funName,M);
+                        // Create a main function
+                        Function *Function = Function::Create(FunType,GlobalValue::ExternalLinkage,funName,M);
 
-  int arg_no=0;
-  for(auto &a: Function->args()) {
-    // iterate over arguments of function
-    // match name to position
-  }
-  
-  //Add a basic block to main to hold instructions, and set Builder
-  //to insert there
-  Builder.SetInsertPoint(BasicBlock::Create(TheContext, "entry", Function));
+                        int arg_no=0;
+                        for(auto &a: Function->args()) {
+                          // iterate over arguments of function
+                          // match name to position
+                        }
+                        
+                        //Add a basic block to main to hold instructions, and set Builder
+                        //to insert there
+                        Builder.SetInsertPoint(BasicBlock::Create(TheContext, "entry", Function));
 
-}
+                      }
 | IN NONE ENDLINE
-{ 
-  // Create int function type with no arguments
-  FunctionType *FunType = 
-    FunctionType::get(Builder.getInt32Ty(),false);
+                      { 
+                        // Create int function type with no arguments
+                        FunctionType *FunType = 
+                          FunctionType::get(Builder.getInt32Ty(),false);
 
-  // Create a main function
-  Function *Function = Function::Create(FunType,  
-         GlobalValue::ExternalLinkage,funName,M);
+                        // Create a main function
+                        Function *Function = Function::Create(FunType,  
+                              GlobalValue::ExternalLinkage,funName,M);
 
-  //Add a basic block to main to hold instructions, and set Builder
-  //to insert there
-  Builder.SetInsertPoint(BasicBlock::Create(TheContext, "entry", Function));
-}
-;
+                        //Add a basic block to main to hold instructions, and set Builder
+                        //to insert there
+                        Builder.SetInsertPoint(BasicBlock::Create(TheContext, "entry", Function));
+                      }
+                      ;
 
-params_list: ID
-{
-  $$ = new vector<string>;
-  // add ID to vector
-}
-| params_list COMMA ID
-{
-  // add ID to $1
-}
-;
+params_list:          ID
+                      {
+                        $$ = new vector<string>;
+                        // add ID to vector
+                      }
+                      | params_list COMMA ID
+                      {
+                        // add ID to $1
+                      }
+                      ;
 
 final:                FINAL expr ENDLINE { Builder.CreateRet($2); }
                       ;
@@ -204,7 +204,7 @@ field_list :          field_list COMMA field
                       | field
 ;
 
-field :                 ID COLON expr
+field :               ID COLON expr
                       | ID LBRACKET expr RBRACKET COLON expr
 // 566 only below
                       | ID
