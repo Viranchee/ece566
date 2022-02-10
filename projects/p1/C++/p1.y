@@ -54,6 +54,14 @@ IRBuilder<> Builder(TheContext);
 %type <val> bitslice
 %type <val> bitslice_list
 %type <val> bitslice_list_helper
+%type <val> bitslice_lhs
+
+%type <val> field
+%type <val> field_list
+
+%type <val> statement
+%type <val> statements
+%type <val> statements_opt
 
 %token IN FINAL SLICE
 %token ERROR
