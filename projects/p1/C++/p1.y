@@ -259,7 +259,7 @@ bitslice_list: LBRACE bitslice_list_helper RBRACE
 bitslice_list_helper:  bitslice
 {
   // return bitslice
-  $$ = $1;
+  $$ = getLowestBit($1);
 }
 | bitslice_list_helper COMMA bitslice
 {
