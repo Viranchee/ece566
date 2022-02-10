@@ -216,6 +216,18 @@ expr: bitslice
 ;
 
 bitslice: ID
+{
+  // ID is a char pointer. bitslice is an expression. ID will be stored in the symbolTable. Retrive it.
+
+  // Check if ID is in symbolTable using isInSymbolTable
+  if(isInSymbolTable((string*)$1)) {
+    // If it is, return the value from symbolTable
+    $$ = getFromSymbolTable((string*)$1);
+  } else {
+    // If it is not, throw an error
+    yyerror("bitslice_lhs not in symbol table");
+  }
+}
 | NUMBER
 {
   // Convert Number to LLVM type and return it
