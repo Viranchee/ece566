@@ -38,23 +38,23 @@ LLVMContext TheContext;
 IRBuilder<> Builder(TheContext);
 
 // Dictionary
-unordered_map <string, Value*> dictionary;
+unordered_map <string, Value*> values;
 
 // Dictionary helper functions
 
-// Create a function which adds a value to the dictionary
-void addToDictionary(string name, Value* value) {
-  dictionary[name] = value;
+// Create a function which adds a value to the values
+void insertInDict(string key, Value* value) {
+  values[key] = value;
 }
 
-// Create a function which returns a value from the dictionary
-Value* getFromdictionary(string name) {
-  return dictionary[name];
+// Create a function which returns a value from the values
+Value* retriveFromDict(string key) {
+  return values[key];
 }
 
-// Create a function which checks if key is in the dictionary and returns true if it is
-bool isIndictionary(string name) {
-  return dictionary.find(name) != dictionary.end();
+// Create a function which checks if key is in the values and returns true if it is
+bool isInDictionary(string name) {
+  return values.find(name) != values.end();
 }
 
 // Bit manipulation instructions
@@ -78,7 +78,7 @@ Value* do_leftshiftbyn_add(Value* value, int shift, Value* add) {
 
 void do_assign_addtodict(char* key, Value* value) { 
   string s(key);
-  addToDictionary(s, value);
+  insertInDict(s, value);
 }
 
 %}
@@ -229,7 +229,7 @@ expr:                 bitslice  { $$ = $1; }
                       | EXPAND LPAREN expr RPAREN
                       ;
 
-bitslice:             ID { $$ = getFromdictionary((string)$1);}
+bitslice:             ID { $$ = retriveFromDict((string)$1);}
                       | NUMBER { $$ = Builder.getInt32($1);}
                       | bitslice_list { $$ = $1;}
                       | LPAREN expr RPAREN { $$ = $2;}
