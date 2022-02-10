@@ -65,11 +65,6 @@ Value* do_leftshiftbyn_add(Value* value, int shift, Value* add) {
   return do_leftshiftbyn_add(value, Builder.getInt32(shift), add);
 }
 
-void do_assign_addtodict(char* key, Value* value) { 
-  string s(key);
-  values[s] = value;
-}
-
 %}
 
 %union {
@@ -181,7 +176,7 @@ statements:           statement
                       | statements statement 
                       ;
 
-statement:            bitslice_lhs ASSIGN expr ENDLINE { do_assign_addtodict($1, $3); }
+statement:            bitslice_lhs ASSIGN expr ENDLINE { values[string($1)] = $3; }
                       | SLICE field_list ENDLINE { printf("SLICE field_list ENDLINE\n"); }
                       ;
 
