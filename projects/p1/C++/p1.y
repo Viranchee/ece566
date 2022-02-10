@@ -40,13 +40,12 @@ IRBuilder<> Builder(TheContext);
 // Dictionary
 unordered_map <string, Value*> values;
 
-
-// Create a function which checks if key is in the values and returns true if it is
-bool isInDictionary(string name) {
-  return values.find(name) != values.end();
-}
-
 // Bit manipulation instructions
+
+// Get range of bits from integer
+Value* getRange(Value* value, int start, int length) {
+  return Builder.CreateLShr(Builder.CreateAnd(value, Builder.getInt32(pow(2, length) - 1)), start);
+}
 
 // Create a function to retrive a bit from an integer
 Value* getBit(Value* value, int bit) {
