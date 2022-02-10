@@ -58,6 +58,10 @@ Value* getBit(Value* value, int bit) {
   return Builder.CreateAnd(Builder.CreateLShr(value, bit), Builder.getInt32(1));
 }
 
+// Get lowest bit from integer
+Value* getLowestBit(Value* value) {
+  return getBit(value, 0);
+}
 
 %}
 
