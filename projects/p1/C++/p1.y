@@ -38,22 +38,23 @@ LLVMContext TheContext;
 IRBuilder<> Builder(TheContext);
 
 // Dictionary
-unordered_map <string, Value*> symbolTable;
+unordered_map <string, Value*> dictionary;
 
 // Dictionary helper functions
-// Create a function which adds a value to the symbolTable
-void addToSymbolTable(string name, Value* value) {
-  symbolTable[name] = value;
+
+// Create a function which adds a value to the dictionary
+void addToDictionary(string name, Value* value) {
+  dictionary[name] = value;
 }
 
-// Create a function which returns a value from the symbolTable
-Value* getFromSymbolTable(string name) {
-  return symbolTable[name];
+// Create a function which returns a value from the dictionary
+Value* getFromdictionary(string name) {
+  return dictionary[name];
 }
 
-// Create a function which checks if key is in the symbolTable and returns true if it is
-bool isInSymbolTable(string name) {
-  return symbolTable.find(name) != symbolTable.end();
+// Create a function which checks if key is in the dictionary and returns true if it is
+bool isIndictionary(string name) {
+  return dictionary.find(name) != dictionary.end();
 }
 
 // Bit manipulation instructions
@@ -76,8 +77,8 @@ Value* do_leftshiftbyn_add(Value* value, int shift, Value* add) {
 }
 
 void do_assign_addtodict(char* key, Value* value) { 
-  string s(key); 
-  symbolTable[key] = value; 
+  string s(key);
+  addToDictionary(s, value);
 }
 
 %}
@@ -228,7 +229,7 @@ expr:                 bitslice  { $$ = $1; }
                       | EXPAND LPAREN expr RPAREN
                       ;
 
-bitslice:             ID { $$ = getFromSymbolTable((string)$1);}
+bitslice:             ID { $$ = getFromdictionary((string)$1);}
                       | NUMBER { $$ = Builder.getInt32($1);}
                       | bitslice_list { $$ = $1;}
                       | LPAREN expr RPAREN { $$ = $2;}
