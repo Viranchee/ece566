@@ -49,8 +49,8 @@ Value* getRange(Value* value, int start, int length) {
 }
 
 // Create a function to retrive a bit from llvm builder value
-Value* getBit(Value* value, Value* bit) {
-  return Builder.CreateAnd(Builder.CreateLShr(value, bit), Builder.getInt32(1));
+Value* getBit(Value* value, Value* position) {
+  return Builder.CreateAnd(Builder.CreateLShr(value, position), Builder.getInt32(1));
 }
 // Get lowest bit from integer
 Value* getLowestBit(Value* value) {
