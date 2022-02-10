@@ -184,73 +184,73 @@ params_list: ID
 }
 ;
 
-final: FINAL expr ENDLINE { Builder.CreateRet($$); }
-      ;
+final:                FINAL expr ENDLINE { Builder.CreateRet($$); }
+                      ;
 
-statements_opt: %empty
-            | statements;
+statements_opt:       %empty
+                      | statements;
 
-statements:   statement 
-            | statements statement 
-            ;
+statements:           statement
+                      | statements statement 
+                      ;
 
-statement: bitslice_lhs ASSIGN expr ENDLINE { do_assign_addtodict($1, $3); }
-          | SLICE field_list ENDLINE
-          ;
+statement:            bitslice_lhs ASSIGN expr ENDLINE { do_assign_addtodict($1, $3); }
+                      | SLICE field_list ENDLINE
+                      ;
 
-field_list : field_list COMMA field
-           | field
+field_list :          field_list COMMA field
+                      | field
 ;
 
-field : ID COLON expr
-      | ID LBRACKET expr RBRACKET COLON expr
+field :                 ID COLON expr
+                      | ID LBRACKET expr RBRACKET COLON expr
 // 566 only below
-      | ID
-      ;
+                      | ID
+                      ;
 
-expr: bitslice  { $$ = $1; }
-      | expr PLUS expr
-      | expr MINUS expr
-      | expr XOR expr {$$ = Builder.CreateXor($1, $3);}
-      | expr AND expr
-      | expr OR expr
-      | INV expr
-      | BINV expr
-      | expr MUL expr
-      | expr DIV expr
-      | expr MOD expr
+expr:                 bitslice  { $$ = $1; }
+                      | expr PLUS expr
+                      | expr MINUS expr
+                      | expr XOR expr {$$ = Builder.CreateXor($1, $3);}
+                      | expr AND expr
+                      | expr OR expr
+                      | INV expr
+                      | BINV expr
+                      | expr MUL expr
+                      | expr DIV expr
+                      | expr MOD expr
 /* 566 only */
-      | REDUCE AND LPAREN expr RPAREN
-      | REDUCE OR LPAREN expr RPAREN
-      | REDUCE XOR LPAREN expr RPAREN
-      | REDUCE PLUS LPAREN expr RPAREN
-      | EXPAND LPAREN expr RPAREN
-      ;
+                      | REDUCE AND LPAREN expr RPAREN
+                      | REDUCE OR LPAREN expr RPAREN
+                      | REDUCE XOR LPAREN expr RPAREN
+                      | REDUCE PLUS LPAREN expr RPAREN
+                      | EXPAND LPAREN expr RPAREN
+                      ;
 
-bitslice: ID { $$ = getFromSymbolTable((string)$1);}
-        | NUMBER { $$ = Builder.getInt32($1);}
-        | bitslice_list { $$ = $1;}
-        | LPAREN expr RPAREN { $$ = $2;}
-        | bitslice NUMBER { $$ = getBit($1,$2);}
-        | bitslice DOT ID
+bitslice:             ID { $$ = getFromSymbolTable((string)$1);}
+                      | NUMBER { $$ = Builder.getInt32($1);}
+                      | bitslice_list { $$ = $1;}
+                      | LPAREN expr RPAREN { $$ = $2;}
+                      | bitslice NUMBER { $$ = getBit($1,$2);}
+                      | bitslice DOT ID
 // 566 only
-        | bitslice LBRACKET expr RBRACKET
-        | bitslice LBRACKET expr COLON expr RBRACKET
-        ;
+                      | bitslice LBRACKET expr RBRACKET
+                      | bitslice LBRACKET expr COLON expr RBRACKET
+                      ;
 
 bitslice_list: LBRACE bitslice_list_helper RBRACE { $$ = $2;}
-            ;
+                      ;
 
 bitslice_list_helper:  bitslice { $$ = getLowestBit($1); }
                       | bitslice_list_helper COMMA bitslice { $$ = do_leftshiftbyn_add($1,1,$3); }
 ;
 
-bitslice_lhs: ID { $$ = $1; }
-            | bitslice_lhs NUMBER
-            | bitslice_lhs DOT ID
+bitslice_lhs:         ID { $$ = $1; }
+                      | bitslice_lhs NUMBER
+                      | bitslice_lhs DOT ID
 // 566 only
-            | bitslice_lhs LBRACKET expr RBRACKET
-            | bitslice_lhs LBRACKET expr COLON expr RBRACKET
+                      | bitslice_lhs LBRACKET expr RBRACKET
+                      | bitslice_lhs LBRACKET expr COLON expr RBRACKET
 ;
 
 %%
