@@ -208,6 +208,10 @@ expr: bitslice
 | expr PLUS expr
 | expr MINUS expr
 | expr XOR expr
+{
+  // Return XOR of Builder
+  $$ = Builder.CreateXor($1, $3);
+}
 | expr AND expr
 | expr OR expr
 | INV expr
