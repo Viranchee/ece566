@@ -225,8 +225,8 @@ bitslice_list_helper:  bitslice
 }
 | bitslice_list_helper COMMA bitslice
 {
-  // Left shift value by doubling it, and add the new value.
-  $$ = Builder.CreateAdd(Builder.CreateMul(Builder.getInt32(2),$1),$3);
+  // Left shift $1 by 1, add $3 to it
+  $$ = Builder.CreateAdd(Builder.CreateShl($1, Builder.getInt32(1), "shl"), $3, "add");
 }
 ;
 
