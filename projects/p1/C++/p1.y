@@ -193,17 +193,17 @@ statements:           statement
                       ;
 
 statement:            bitslice_lhs ASSIGN expr ENDLINE { do_assign_addtodict($1, $3); }
-                      | SLICE field_list ENDLINE
+                      | SLICE field_list ENDLINE { printf("SLICE field_list ENDLINE\n"); }
                       ;
 
-field_list :          field_list COMMA field
-                      | field
+field_list :          field_list COMMA field { printf("field_list COMMA field\n"); }
+                      | field { printf("field\n"); }
 ;
 
-field :               ID COLON expr
-                      | ID LBRACKET expr RBRACKET COLON expr
+field :               ID COLON expr { printf("ID COLON expr\n"); }
+                      | ID LBRACKET expr RBRACKET COLON expr { printf("ID LBRACKET expr RBRACKET COLON expr\n"); }
 // 566 only below
-                      | ID
+                      | ID { printf("ID\n"); }
                       ;
 
 expr:                 bitslice  { $$ = $1; }
@@ -230,10 +230,10 @@ bitslice:             ID { $$ = retriveFromDict((string)$1);}
                       | bitslice_list { $$ = $1;}
                       | LPAREN expr RPAREN { $$ = $2;}
                       | bitslice NUMBER { $$ = getBit($1,$2);}
-                      | bitslice DOT ID
+                      | bitslice DOT ID { printf("bitslice DOT ID\n"); }
 // 566 only
-                      | bitslice LBRACKET expr RBRACKET
-                      | bitslice LBRACKET expr COLON expr RBRACKET
+                      | bitslice LBRACKET expr RBRACKET { printf("bitslice LBRACKET expr RBRACKET\n"); }
+                      | bitslice LBRACKET expr COLON expr RBRACKET { printf("bitslice LBRACKET expr COLON expr RBRACKET\n"); }
                       ;
 
 bitslice_list: LBRACE bitslice_list_helper RBRACE { $$ = $2;}
@@ -244,11 +244,11 @@ bitslice_list_helper:  bitslice { $$ = getLowestBit($1); }
 ;
 
 bitslice_lhs:         ID { $$ = $1; }
-                      | bitslice_lhs NUMBER
-                      | bitslice_lhs DOT ID
+                      | bitslice_lhs NUMBER { printf("bitslice_lhs NUMBER\n"); }
+                      | bitslice_lhs DOT ID { printf("bitslice_lhs DOT ID\n"); }
 // 566 only
-                      | bitslice_lhs LBRACKET expr RBRACKET
-                      | bitslice_lhs LBRACKET expr COLON expr RBRACKET
+                      | bitslice_lhs LBRACKET expr RBRACKET { printf("bitslice_lhs LBRACKET expr RBRACKET\n"); }
+                      | bitslice_lhs LBRACKET expr COLON expr RBRACKET { printf("bitslice_lhs LBRACKET expr COLON expr RBRACKET\n"); }
 ;
 
 %%
