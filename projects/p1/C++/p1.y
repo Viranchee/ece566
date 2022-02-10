@@ -40,17 +40,6 @@ IRBuilder<> Builder(TheContext);
 // Dictionary
 unordered_map <string, Value*> values;
 
-// Dictionary helper functions
-
-// Create a function which adds a value to the values
-void insertInDict(string key, Value* value) {
-  values[key] = value;
-}
-
-// Create a function which returns a value from the values
-Value* retriveFromDict(string key) {
-  return values[key];
-}
 
 // Create a function which checks if key is in the values and returns true if it is
 bool isInDictionary(string name) {
@@ -225,7 +214,7 @@ expr:                 bitslice  { $$ = $1; }
                       | EXPAND LPAREN expr RPAREN
                       ;
 
-bitslice:             ID { $$ = retriveFromDict((string)$1);}
+bitslice:             ID { $$ = values[(string)$1];}
                       | NUMBER { $$ = Builder.getInt32($1);}
                       | bitslice_list { $$ = $1;}
                       | LPAREN expr RPAREN { $$ = $2;}
