@@ -211,11 +211,11 @@ expr:                 bitslice  { $$ = $1; }
                       | expr DIV expr     {$$ = Builder.CreateSDiv($1, $3);}
                       | expr MOD expr     {$$ = Builder.CreateSRem($1, $3);}
 /* 566 only */
-                      | REDUCE AND LPAREN expr RPAREN
-                      | REDUCE OR LPAREN expr RPAREN
-                      | REDUCE XOR LPAREN expr RPAREN
-                      | REDUCE PLUS LPAREN expr RPAREN
-                      | EXPAND LPAREN expr RPAREN
+                      | REDUCE AND LPAREN expr RPAREN { printf("REDUCE AND LPAREN expr RPAREN\n"); }
+                      | REDUCE OR LPAREN expr RPAREN { printf("REDUCE OR LPAREN expr RPAREN\n"); }
+                      | REDUCE XOR LPAREN expr RPAREN { printf("REDUCE XOR LPAREN expr RPAREN\n"); }
+                      | REDUCE PLUS LPAREN expr RPAREN { printf("REDUCE PLUS LPAREN expr RPAREN\n"); }
+                      | EXPAND LPAREN expr RPAREN { printf("EXPAND LPAREN expr RPAREN\n"); }
                       ;
 
 bitslice:             ID { $$ = values[(string)$1];}
