@@ -186,7 +186,7 @@ params_list: ID
 }
 ;
 
-final:                FINAL expr ENDLINE { Builder.CreateRet($$); }
+final:                FINAL expr ENDLINE { Builder.CreateRet($2); }
                       ;
 
 statements_opt:       %empty
