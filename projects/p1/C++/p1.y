@@ -231,7 +231,7 @@ bitslice:             ID { $$ = values[(string)$1];}
                         $$ = getBit($1, offset);
                       }
 // 566 only
-                      | bitslice LBRACKET expr RBRACKET { printf("bitslice LBRACKET expr RBRACKET\n"); }
+                      | bitslice LBRACKET expr RBRACKET { $$ = getBit($1,$3); }
                       | bitslice LBRACKET expr COLON expr RBRACKET { printf("bitslice LBRACKET expr COLON expr RBRACKET\n"); }
                       ;
 
