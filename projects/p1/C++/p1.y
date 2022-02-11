@@ -52,7 +52,10 @@ unordered_map <string, Value*> values;
 // A Dictionary that holds Slices as value and string as keys
 unordered_map <string, Slices> SlicesDict;
 
+// Bitslice IDs Helper
+int bitsliceIDs = 0;
 
+// Functions/Helpers
 // Bit manipulation instructions
 
 
@@ -60,6 +63,7 @@ void debug(Value* val) {
   val->print(errs(),true);
   cout << endl;
 }
+
 // Get range of bits from integer
 Value* getRange(Value* value, int start, int length) {
   return Builder.CreateLShr(Builder.CreateAnd(value, Builder.getInt32(pow(2, length) - 1)), start);
@@ -205,8 +209,16 @@ statements:           statement
                       | statements statement 
                       ;
 
-statement:            bitslice_lhs ASSIGN expr ENDLINE { values[string($1)] = $3; }
-                      | SLICE field_list ENDLINE { printf("SLICE field_list ENDLINE\n"); }
+statement:            bitslice_lhs ASSIGN expr ENDLINE 
+                      { 
+                        // This is more complex than it seems
+                        values[string($1)] = $3; 
+                      }
+                      | SLICE field_list ENDLINE
+                      {
+                        // reset the global variable here
+                        bitsliceIDs = 0;
+                      }
                       ;
 
 field_list:           field_list COMMA field { printf("field_list COMMA field\n"); }
@@ -221,7 +233,16 @@ field:                ID COLON expr
                       }
                       | ID LBRACKET expr RBRACKET COLON expr { printf("ID LBRACKET expr RBRACKET COLON expr\n"); }
 // 566 only below
-                      | ID { printf("ID\n"); }
+                      | ID 
+                      {
+                        // global variable to track the current position
+                        Value* id = Builder.getInt32(bitsliceIDs);
+                        // Make Slices with start and end as bitsliceIDs
+                        SlicesDict[string($1)] = Slices{id, id};
+                        // Increment bitsliceIDs
+                        bitsliceIDs++;
+                        // reset it at ENDLINE
+                      }
                       ;
 
 expr:                 bitslice  { $$ = $1; }
