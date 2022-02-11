@@ -54,7 +54,7 @@ Value* getBit(Value* value, Value* position) {
 }
 // Get lowest bit from integer
 Value* getLowestBit(Value* value) {
-  return getBit(value, Builder.getInt32(0));
+  return Builder.CreateAnd(value, Builder.getInt32(1));
 }
 Value* do_leftshiftbyn_add(Value* value, Value* shift, Value* add) {
   return Builder.CreateAdd(Builder.CreateShl(value, shift), add);
