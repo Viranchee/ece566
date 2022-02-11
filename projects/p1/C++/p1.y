@@ -217,7 +217,21 @@ expr:                 bitslice  { $$ = $1; }
                       | REDUCE OR LPAREN expr RPAREN { printf("REDUCE OR LPAREN expr RPAREN\n"); }
                       | REDUCE XOR LPAREN expr RPAREN { printf("REDUCE XOR LPAREN expr RPAREN\n"); }
                       | REDUCE PLUS LPAREN expr RPAREN { printf("REDUCE PLUS LPAREN expr RPAREN\n"); }
-                      | EXPAND LPAREN expr RPAREN { printf("EXPAND LPAREN expr RPAREN\n"); }
+                      | EXPAND LPAREN expr RPAREN 
+                      {
+                        printf("EXPAND LPAREN expr RPAREN\n");
+                        
+                        // get lowest bit of expr
+                        Value* lowest_bit = getLowestBit($3);
+                        
+                        // Make a value of maximum unsigned 32 bits
+                        Value* max_32 = Builder.getInt32(0xFFFFFFFF);
+
+                        // Multiply lowest_bit and max_32, so it fills all the 32 bits
+                        Value* result = Builder.CreateMul(lowest_bit, max_32);
+
+                        $$ = result;
+                      }
                       ;
 
 bitslice:             ID { $$ = values[(string)$1];}
