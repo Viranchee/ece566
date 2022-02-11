@@ -39,7 +39,16 @@ IRBuilder<> Builder(TheContext);
 
 // Dictionary
 unordered_map <string, Value*> values;
-unordered_map <string, Value*> slices;
+
+// A struct which holds Index, Range and Value
+struct Slices {
+  Value* start;
+  Value* range;
+};
+
+// A Dictionary that holds Slices as value and string as keys
+unordered_map <string, Slices> SlicesDict;
+
 
 // Bit manipulation instructions
 
@@ -201,7 +210,12 @@ field_list:           field_list COMMA field { printf("field_list COMMA field\n"
                       | field { printf("field\n"); }
                       ;
 
-field:                ID COLON expr { slices[(string)$1] = $3; }
+field:                ID COLON expr 
+                      {
+                        // a:4
+                        // Make Slices struct with index = expr, range = 1 and store in SlicesDict
+                        SlicesDict[string($1)] = Slices{$3, Builder.getInt32(1)};
+                      }
                       | ID LBRACKET expr RBRACKET COLON expr { printf("ID LBRACKET expr RBRACKET COLON expr\n"); }
 // 566 only below
                       | ID { printf("ID\n"); }
@@ -310,8 +324,8 @@ bitslice:             ID { $$ = values[(string)$1];}
                       | bitslice NUMBER { $$ = getBit($1,Builder.getInt32($2));}
                       | bitslice DOT ID 
                       {
-                        // Get value of ID from slices dictionary
-                        Value* offset = slices[(string)$3];
+                        // From SlicesDict, get value of SliceDict using key ID
+                        Value* offset = SlicesDict[string($3)].start;
                         // Get id bit from bitslice
                         $$ = getBit($1, offset);
                       }
