@@ -218,6 +218,8 @@ expr:                 bitslice  { $$ = $1; }
                         // 111111 -> 1
                         // 101101 -> 0
                         // Divide by 111111 all 1s
+                        // Divide expr by 0xFFFFFFFF
+                        $$ = Builder.CreateUDiv($4, Builder.getInt32(0xFFFFFFFF));
                       }
                       | REDUCE OR LPAREN expr RPAREN 
                       {
