@@ -37,14 +37,17 @@ Module *M;
 LLVMContext TheContext;
 IRBuilder<> Builder(TheContext);
 
-// Dictionary
-unordered_map <string, Value*> values;
 
 // A struct which holds Index, Range and Value
 struct Slices {
   Value* start;
-  Value* range;
+  Value* end;
 };
+
+// GLOBALS
+
+// Dictionary
+unordered_map <string, Value*> values;
 
 // A Dictionary that holds Slices as value and string as keys
 unordered_map <string, Slices> SlicesDict;
