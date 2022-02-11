@@ -56,13 +56,14 @@ unordered_map <string, Slices> SlicesDict;
 int bitsliceIDs = 0;
 
 // Functions/Helpers
-// Bit manipulation instructions
 
 
-void debug(Value* val) {
-  val->print(errs(),true);
-  cout << endl;
+void debug(Value* val, string message) {
+  val->print(errs(), true);
+  printf(" <- %s\n", message.c_str());
 }
+
+// Bit manipulation instructions
 
 // Get range of bits from integer
 Value* getRange(Value* value, int start, int length) {
