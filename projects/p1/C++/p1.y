@@ -213,14 +213,41 @@ expr:                 bitslice  { $$ = $1; }
                       | expr DIV expr     {$$ = Builder.CreateSDiv($1, $3);}
                       | expr MOD expr     {$$ = Builder.CreateSRem($1, $3);}
 /* 566 only */
-                      | REDUCE AND LPAREN expr RPAREN { printf("REDUCE AND LPAREN expr RPAREN\n"); }
-                      | REDUCE OR LPAREN expr RPAREN { printf("REDUCE OR LPAREN expr RPAREN\n"); }
-                      | REDUCE XOR LPAREN expr RPAREN { printf("REDUCE XOR LPAREN expr RPAREN\n"); }
-                      | REDUCE PLUS LPAREN expr RPAREN { printf("REDUCE PLUS LPAREN expr RPAREN\n"); }
-                      | EXPAND LPAREN expr RPAREN 
+                      | REDUCE AND LPAREN expr RPAREN
                       {
-                        printf("EXPAND LPAREN expr RPAREN\n");
+                        // 111111 -> 1
+                        // 101101 -> 0
+                        // Divide by 111111 all 1s
+                      }
+                      | REDUCE OR LPAREN expr RPAREN 
+                      {
+                        // OR all the bits
+                        // 11111 -> 1
+                        // 00000 -> 0
+                        // 100000 -> 1
                         
+                        // If value greater than 1, return 1
+
+                      }
+                      | REDUCE XOR LPAREN expr RPAREN 
+                      {
+                        // 10000 -> 1
+                        // 00000 -> 0
+                        // 11111 -> 1
+                        // 11110 -> 0
+                        // XOR all the bitfields
+
+                      }
+                      | REDUCE PLUS LPAREN expr RPAREN 
+                      {
+                        // 00000 -> 0
+                        // 11111 -> 5
+                        // 01010 -> 2
+                        // 10101 -> 3
+                        
+                      }
+                      | EXPAND LPAREN expr RPAREN 
+                      {                        
                         // get lowest bit of expr
                         Value* lowest_bit = getLowestBit($3);
                         
