@@ -43,6 +43,11 @@ unordered_map <string, Value*> slices;
 
 // Bit manipulation instructions
 
+
+void debug(Value* val) {
+  val->print(errs(),true);
+  cout << endl;
+}
 // Get range of bits from integer
 Value* getRange(Value* value, int start, int length) {
   return Builder.CreateLShr(Builder.CreateAnd(value, Builder.getInt32(pow(2, length) - 1)), start);
