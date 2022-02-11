@@ -228,8 +228,8 @@ field_list:           field_list COMMA field { printf("field_list COMMA field\n"
 field:                ID COLON expr 
                       {
                         // a:4
-                        // Make Slices struct with index = expr, range = 1 and store in SlicesDict
-                        SlicesDict[string($1)] = Slices{$3, Builder.getInt32(1)};
+                        // Make Slices struct with start and end as same, and store in SlicesDict
+                        SlicesDict[string($1)] = Slices{$3, $3};
                       }
                       | ID LBRACKET expr RBRACKET COLON expr { printf("ID LBRACKET expr RBRACKET COLON expr\n"); }
 // 566 only below
