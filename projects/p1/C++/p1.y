@@ -230,6 +230,12 @@ expr:                 bitslice  { $$ = $1; }
                         
                         // If value greater than 1, return 1
 
+                        // Check if value is greater than 1
+                        Value* boolean = Builder.CreateICmpUGT($4, Builder.getInt32(0));
+
+                        // Convert boolean to integer
+                        $$ = Builder.CreateZExt(boolean, Builder.getInt32Ty());
+
                       }
                       | REDUCE XOR LPAREN expr RPAREN 
                       {
