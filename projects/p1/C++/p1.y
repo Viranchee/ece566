@@ -143,7 +143,7 @@ inputs:               IN params_list ENDLINE
                         Builder.SetInsertPoint(BasicBlock::Create(TheContext, "entry", Function));
 
                       }
-| IN NONE ENDLINE
+                      | IN NONE ENDLINE
                       { 
                         // Create int function type with no arguments
                         FunctionType *FunType = 
@@ -186,11 +186,11 @@ statement:            bitslice_lhs ASSIGN expr ENDLINE { values[string($1)] = $3
                       | SLICE field_list ENDLINE { printf("SLICE field_list ENDLINE\n"); }
                       ;
 
-field_list :          field_list COMMA field { printf("field_list COMMA field\n"); }
+field_list:           field_list COMMA field { printf("field_list COMMA field\n"); }
                       | field { printf("field\n"); }
                       ;
 
-field :               ID COLON expr { slices[(string)$1] = $3; }
+field:                ID COLON expr { slices[(string)$1] = $3; }
                       | ID LBRACKET expr RBRACKET COLON expr { printf("ID LBRACKET expr RBRACKET COLON expr\n"); }
 // 566 only below
                       | ID { printf("ID\n"); }
@@ -253,6 +253,8 @@ expr:                 bitslice  { $$ = $1; }
                         // 01010 -> 2
                         // 10101 -> 3
                         
+                        // Add all the individual bits of expr
+                        
                       }
                       | EXPAND LPAREN expr RPAREN 
                       {                        
@@ -286,10 +288,10 @@ bitslice:             ID { $$ = values[(string)$1];}
                       | bitslice LBRACKET expr COLON expr RBRACKET { printf("bitslice LBRACKET expr COLON expr RBRACKET\n"); }
                       ;
 
-bitslice_list: LBRACE bitslice_list_helper RBRACE { $$ = $2;}
+bitslice_list:        LBRACE bitslice_list_helper RBRACE { $$ = $2;}
                       ;
 
-bitslice_list_helper:  bitslice { $$ = getLowestBit($1); }
+bitslice_list_helper: bitslice { $$ = getLowestBit($1); }
                       | bitslice_list_helper COMMA bitslice { $$ = do_leftshiftbyn_add($1,1,getLowestBit($3)); }
 ;
 
