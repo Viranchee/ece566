@@ -37,38 +37,87 @@ Module *M;
 LLVMContext TheContext;
 IRBuilder<> Builder(TheContext);
 
-
-// A struct which holds Index, Range and Value
-struct Slices {
-  Value* start;
-  Value* end;
-};
-
-// GLOBALS
-
-// Dictionary
-unordered_map <string, Value*> values;
-
-// A Dictionary that holds Slices as value and string as keys
-unordered_map <string, Slices> SlicesDict;
-
-// Bitslice IDs Helper
-int bitsliceIDs = 0;
-
-// Functions/Helpers
-
-
+// ## DEBUGGING
 void debug(Value* val, string message) {
   val->print(errs(), true);
   printf(" <- %s\n", message.c_str());
 }
 
-// Bit manipulation instructions
+// ## TYPES
 
-// Get range of bits from integer
-Value* getRange(Value* value, int start, int length) {
-  return Builder.CreateLShr(Builder.CreateAnd(value, Builder.getInt32(pow(2, length) - 1)), start);
+// A struct which holds Index and Range
+struct Slice {
+  Value* start;
+  Value* range;
+};
+
+// A struct which holds values, index and range
+struct ValueSlice {
+  Value* value;
+  Slice slice;
+};
+
+
+// ## GLOBAL VARIABLES
+
+// Dictionary, holds all major values
+unordered_map <string, ValueSlice> valueSliceDict;
+
+// A Dictionary that holds Slice as value and string as keys
+unordered_map <string, Slice> SlicesDict;
+
+// Bitslice IDs Helper
+int bitsliceIDs = 0;
+
+// ## FUNCTIONS
+
+// Methods for ValueSlice
+
+// 1. Add value in the mask bits
+//
+
+
+// Methods for ValueSliceDict 
+
+// Add a value to the ValueSlice dictionary
+void addValueSlice(string name, Value* value, Value* start, Value* range) {
+  ValueSlice vs;
+  vs.value = value;
+  Slice s;
+  s.start = start;
+  s.range = range;
+  vs.slice = s;
+  // Insert vs into valueSliceDict
+  valueSliceDict.insert(make_pair(name, vs));
 }
+
+void addNewValue(string name, Value* value) {
+  ValueSlice vs;
+  vs.value = value;
+  Slice s;
+  s.start = Builder.getInt32(0);
+  s.range = Builder.getInt32(0xFFFFFFFF); // all 1s
+  vs.slice = s;
+  valueSliceDict.insert(make_pair(name, vs));
+}
+
+void updateValueSlice(string name, Value* value) {
+  // get string value pointed by Value* value
+  // string valueStr = value.getName();
+  // debug(valueStr, "UpdateValueSlice");
+}
+
+// Get ValueSlice from the ValueSlice dictionary
+ValueSlice getValueSlice(string name) {
+  return valueSliceDict.at(name);
+}
+
+// Get a Value from the ValueSlice dictionary
+Value* getValue(string name) {
+  return valueSliceDict.at(name).value;
+}
+
+// Bit manipulation instructions
 
 // Create a function to retrive a bit from llvm builder value
 Value* getBit(Value* value, Value* position) {
@@ -160,9 +209,10 @@ inputs:               IN params_list ENDLINE
                         int arg_no=0;
                         for(auto &a: Function->args()) {
                           // iterate over arguments of function
-                          // get first element from vector $2, 
-                          values[$2->at(arg_no)] = &a;
+                          // get first element from vector $2,
+                          string arg_name = $2->at(arg_no);
                           // match name to position
+                          addNewValue(arg_name, &a);
                           arg_no++;
                         }
                         
@@ -213,7 +263,7 @@ statements:           statement
 statement:            bitslice_lhs ASSIGN expr ENDLINE 
                       { 
                         // This is more complex than it seems
-                        values[string($1)] = $3; 
+                        addNewValue(string($1), $3);
                       }
                       | SLICE field_list ENDLINE
                       {
@@ -229,17 +279,24 @@ field_list:           field_list COMMA field { printf("field_list COMMA field\n"
 field:                ID COLON expr 
                       {
                         // a:4
-                        // Make Slices struct with start and end as same, and store in SlicesDict
-                        SlicesDict[string($1)] = Slices{$3, $3};
+                        // Make Slice struct with start and end as same, and store in SlicesDict
+                        cout << "Saved in SlicesDict: Key " << $1 << endl;
+                        debug($3, " <- Value");
+                        SlicesDict[string($1)] = Slice{$3, $3};
                       }
-                      | ID LBRACKET expr RBRACKET COLON expr { printf("ID LBRACKET expr RBRACKET COLON expr\n"); }
+                      | ID LBRACKET expr RBRACKET COLON expr 
+                      {
+                        // Store the value in slices Dictionary
+                        // $3 is width, $6 is start, $1 is key
+                        // end 
+                      }
 // 566 only below
                       | ID 
                       {
                         // global variable to track the current position
                         Value* id = Builder.getInt32(bitsliceIDs);
-                        // Make Slices with start and end as bitsliceIDs
-                        SlicesDict[string($1)] = Slices{id, id};
+                        // Make Slice with start and end as bitsliceIDs
+                        SlicesDict[string($1)] = Slice{id, id};
                         // Increment bitsliceIDs
                         bitsliceIDs++;
                         // reset it at ENDLINE
@@ -342,7 +399,7 @@ expr:                 bitslice  { $$ = $1; }
                       }
                       ;
 
-bitslice:             ID { $$ = values[(string)$1];}
+bitslice:             ID { $$ = getValue((string)$1); }
                       | NUMBER { $$ = Builder.getInt32($1);}
                       | bitslice_list { $$ = $1;}
                       | LPAREN expr RPAREN { $$ = $2;}
