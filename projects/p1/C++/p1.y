@@ -56,9 +56,11 @@ Value* getBit(Value* value, Value* position) {
 Value* getLowestBit(Value* value) {
   return Builder.CreateAnd(value, Builder.getInt32(1));
 }
+
 Value* do_leftshiftbyn_add(Value* value, Value* shift, Value* add) {
   return Builder.CreateAdd(Builder.CreateShl(value, shift), add);
 }
+
 Value* do_leftshiftbyn_add(Value* value, int shift, Value* add) {
   // Left shift $1 by 1, add $3 to it
   return do_leftshiftbyn_add(value, Builder.getInt32(shift), add);
