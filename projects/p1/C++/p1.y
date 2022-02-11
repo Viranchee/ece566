@@ -57,6 +57,12 @@ Value* getRange(Value* value, int start, int length) {
 Value* getBit(Value* value, Value* position) {
   return Builder.CreateAnd(Builder.CreateLShr(value, position), Builder.getInt32(1));
 }
+
+// Create a function to retrive a bit from llvm builder value
+Value* getBit(Value* value, int position) {
+  return Builder.CreateAnd(Builder.CreateLShr(value, position), Builder.getInt32(1));
+}
+
 // Get lowest bit from integer
 Value* getLowestBit(Value* value) {
   return Builder.CreateAnd(value, Builder.getInt32(1));
@@ -249,6 +255,18 @@ expr:                 bitslice  { $$ = $1; }
                         // 11111 -> 1
                         // 11110 -> 0
                         // XOR all the bitfields
+                        // Add all the individual bits of expr
+                        
+                        Value* xor_temp = Builder.getInt32(0);
+
+                        for (int i = 0; i < 32; i++)
+                        {
+                          // Get i bit from expr
+                          Value* bit = getBit($4, i);
+                          // Add the bit to xor
+                          xor_temp = Builder.CreateXor(xor_temp, bit);
+                        }
+                        $$ = xor_temp;
 
                       }
                       | REDUCE PLUS LPAREN expr RPAREN 
@@ -259,7 +277,16 @@ expr:                 bitslice  { $$ = $1; }
                         // 10101 -> 3
                         
                         // Add all the individual bits of expr
-                        
+                        Value* sum = Builder.getInt32(0);
+
+                        for (int i = 0; i < 32; i++)
+                        {
+                          // Get i bit from expr
+                          Value* bit = getBit($4, i);
+                          // Add the bit to sum
+                          sum = Builder.CreateAdd(sum, bit);
+                        }
+                        $$ = sum;
                       }
                       | EXPAND LPAREN expr RPAREN 
                       {                        
