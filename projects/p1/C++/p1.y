@@ -153,6 +153,7 @@ Value* do_leftshiftbyn_add(Value* value, int shift, Value* add) {
 }
 
 Value* createMask(Value* start, Value* range) {
+  // TODO: Debug this
   // Make all bits 1 from start to start + range
 
   // start = 3, range = 2, N no. of bits
@@ -306,9 +307,11 @@ statements:           statement
 statement:            bitslice_lhs ASSIGN expr ENDLINE 
                       { 
                         // TODO: Use mask then assign
+                        // Get valueSlice using bitslice_lhs
+                        // Get mask using slice of valueSlice
                         // MASK is right shifted, a[4]:8 a[range]:start will output 0b000000001111
                         // computed = AND Mask with expr 0000001111 && 000000001001
-                        // Shift computed value left by start 0000100100000000
+                        // Shift left computed value left by start 0000100100000000
                         // Clear bits of bitslice_lhs Value at position MASK, by ANDing with !MASK 1111111000011111111
                         // Use the shifted computed value and OR it with the above computed value
                         addNewValue(string($1), $3);
@@ -331,7 +334,6 @@ field:                ID COLON expr
                         // Make Slice struct with start=$3 and range=0, and store in slicesDict
                         cout << "Saved in slicesDict: Key " << $1 << endl;
                         debug($3, " <- Value");
-                        // TODO helper function
                         Slice slice = Slice{$3, Builder.getInt32(0)};
                         addSlice(string($1), slice);
                       }
@@ -341,7 +343,6 @@ field:                ID COLON expr
                         // Make new Slice, start = $6, range = $3
                         Slice slice = {$6, $3};
                         // Store the value in slices Dictionary
-                        // TODO helper function
                         addSlice(string($1), slice);
                       }
 // 566 only below
@@ -350,7 +351,6 @@ field:                ID COLON expr
                         // global variable to track the current position
                         Value* id = Builder.getInt32(bitsliceIDs);
                         // Make Slice with start and end as bitsliceIDs
-                        // TODO helper function
                         addSlice(string($1), Slice{id, id});
                         // Increment bitsliceIDs
                         bitsliceIDs++;
@@ -370,7 +370,6 @@ expr:                 bitslice  { $$ = $1; }
                         // Flip the LSB, by using XOR operation with 1
                         Value* one = Builder.getInt32(1);
                         $$ = Builder.CreateXor($2, one);
-                        // TODO: Check running secret tests with Unsigned and Signed versions of code
                       }
                       | expr MUL expr     {$$ = Builder.CreateMul($1, $3);}
                       | expr DIV expr     {$$ = Builder.CreateSDiv($1, $3);}
@@ -491,13 +490,11 @@ bitslice_lhs:         ID { $$ = $1; }
                       | bitslice_lhs NUMBER { printf("bitslice_lhs NUMBER\n"); }
                       | bitslice_lhs DOT ID 
                       {
-                        // Todo18
                         if (slicesDict.find(string($3)) != slicesDict.end())
                         {
                           // key: ValueSlice Dictionary
                           // ID: char, for Slice Dictionary
                           // Add the Slice to ValueSlice's slice
-                          // TODO helper function
                           Slice slice = slicesDict[(string)$3];
                           debug(slice.start, " <- Slice start");
                           debug(slice.range, " <- Slice range");
