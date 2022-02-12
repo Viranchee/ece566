@@ -452,22 +452,18 @@ bitslice:             ID { $$ = valueSliceDict[(string)$1].value; }
                       | bitslice NUMBER { $$ = getBit($1,Builder.getInt32($2));}
                       | bitslice DOT ID 
                       {
-                        // Todo18 Done
                         // From slicesDict, grab value of Slice using key ID
-                        Slice slice = getSlice(string($3));
-                        debug(slice.start, " <- Slice start");
-                        debug(slice.range, " <- Slice range");
-                        // Input: slice(start, range), bitslice
-                        $$ = getMaskedValue($1, slice);
-
-                        // Value* mask = createMask(slice.start, slice.range);
-                        // // Output: bitslice && MASK, right shift range or (range-1)
-                        // Value* bsAndMask = Builder.CreateAnd(mask, $1);
-                        // Value* bsRShift = Builder.CreateLShr(bsAndMask, slice.start);
-                        // $$ = bsRShift;
-
-                        // Get id bit from bitslice
-                        // $$ = getBit($1, offset);
+                        // Check if slicesDict has key ID
+                        if (slicesDict.find(string($3)) != slicesDict.end())
+                        {
+                          Slice slice = slicesDict[string($3)];
+                          debug(slice.start, " Slice start");
+                          debug(slice.range, " Slice range");
+                          
+                          // Input: slice(start, range), bitslice
+                          $$ = getMaskedValue($1, slice);
+                        }
+                        else { yyerror("Slice not found"); }
                       }
 // 566 only
                       | bitslice LBRACKET expr RBRACKET { $$ = getBit($1,$3); }
@@ -490,7 +486,6 @@ bitslice_lhs:         ID { $$ = $1; }
                         // key: ValueSlice Dictionary
                         // ID: char, for Slice Dictionary
                         // Add the Slice to ValueSlice's slice
-                        // TODO helper function
                         if (slicesDict.find(string($3)) != slicesDict.end())
                         {
                           // key: ValueSlice Dictionary
