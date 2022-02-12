@@ -487,7 +487,29 @@ bitslice_list_helper: bitslice { $$ = getLowestBit($1); }
 ;
 
 bitslice_lhs:         ID { $$ = $1; }
-                      | bitslice_lhs NUMBER { printf("bitslice_lhs NUMBER\n"); }
+                      | bitslice_lhs NUMBER { 
+                        // a1
+                        // return single masked bit, use getBit
+                        // check if valueSliceDict has key $1
+                        if (valueSliceDict.find(string($1)) != valueSliceDict.end())
+                        {
+                          // Get valueSlice from valueSliceDict
+                          ValueSlice valueSlice = valueSliceDict[string($1)];
+                          // Make and add a slice to the valueSliceDict[$1]
+
+                          // Initialize a new slice, with start = $2, range = 1
+                          Slice slice = Slice{Builder.getInt32($2), Builder.getInt32(0)};
+
+                          // Add slice to valueSlice
+                          valueSlice.slice = slice;
+                          
+                          $$ = $1;
+                        }
+                        else { yyerror("Slice not found"); }
+
+
+                        
+                       }
                       | bitslice_lhs DOT ID 
                       {
                         if (slicesDict.find(string($3)) != slicesDict.end())
