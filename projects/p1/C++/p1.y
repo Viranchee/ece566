@@ -127,12 +127,6 @@ void addNewValue(string name, Value* value) {
   valueSliceDict.insert(make_pair(name, vs));
 }
 
-void updateValueSlice(string name, Value* value) {
-  // get string value pointed by Value* value
-  // string valueStr = value.getName();
-  // debug(valueStr, "UpdateValueSlice");
-}
-
 // Get ValueSlice from the ValueSlice dictionary
 ValueSlice getValueSlice(string name) {
   return valueSliceDict.at(name);
