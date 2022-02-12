@@ -121,7 +121,7 @@ void addNewValue(string name, Value* value) {
   vs.value = value;
   Slice s;
   s.start = Builder.getInt32(0);
-  s.range = Builder.getInt32(0xFFFFFFFF); // all 1s
+  s.range = Builder.getInt32(31); // All 1s masked, from 0 to 31st bit, range = 31
   vs.slice = s;
   valueSliceDict[name] = vs;
 }
