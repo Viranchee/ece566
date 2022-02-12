@@ -83,11 +83,6 @@ void addSlice(string key, Slice slice) {
   slicesDict.insert(pair<string, Slice>(key, slice));
 }
 
-// Get Slice from the slicesDict dictionary
-Slice getSlice(string key) {
-  return slicesDict.at(key);
-}
-
 // Methods for ValueSliceDict 
 
 // Add a value to the ValueSlice dictionary
@@ -125,16 +120,6 @@ void addNewValue(string name, Value* value) {
   s.range = Builder.getInt32(0xFFFFFFFF); // all 1s
   vs.slice = s;
   valueSliceDict.insert(make_pair(name, vs));
-}
-
-// Get ValueSlice from the ValueSlice dictionary
-ValueSlice getValueSlice(string name) {
-  return valueSliceDict.at(name);
-}
-
-// Get a Value from the ValueSlice dictionary
-Value* getValue(string name) {
-  return valueSliceDict.at(name).value;
 }
 
 // Bit manipulation instructions
@@ -195,11 +180,6 @@ Value* getMaskedValue(Value* value, Slice slice) {
   Value* valueAndMask = Builder.CreateAnd(mask, value);
   Value* valueAligned = Builder.CreateLShr(valueAndMask, slice.start);
   return valueAligned;
-}
-
-Value* getMaskedValue(string key) {
-  ValueSlice vs = getValueSlice(key);
-  return getMaskedValue(vs.value, vs.slice);
 }
 
 %}
@@ -511,15 +491,18 @@ bitslice_lhs:         ID { $$ = $1; }
                         // ID: char, for Slice Dictionary
                         // Add the Slice to ValueSlice's slice
                         // TODO helper function
-                        Slice slice = getSlice(string($3));
-                        addSliceToValueSlice(string($1), slice);
-
-                        // Grab a Masked version of bitslice_lhs Value from ValueSliceDict
-                        // Value* masked_value = getMaskedValue(string($1));
-                        // $$ = masked_value;
-
-                        printf("bitslice_lhs DOT ID\n");
-                        
+                        if (slicesDict.find(string($3)) != slicesDict.end())
+                        {
+                          // key: ValueSlice Dictionary
+                          // ID: char, for Slice Dictionary
+                          // Add the Slice to ValueSlice's slice
+                          // TODO helper function
+                          Slice slice = slicesDict[(string)$3];
+                          debug(slice.start, " <- Slice start");
+                          debug(slice.range, " <- Slice range");
+                          addSliceToValueSlice(string($1), slice);
+                        }
+                        else { YYERROR; }
                         $$ = $1;
                         
                       }
