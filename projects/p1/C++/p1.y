@@ -57,24 +57,23 @@ struct ValueSlice {
   Slice slice;
 };
 
-
 // ## GLOBAL VARIABLES
 
-// Dictionary, holds all major values
+// The values variable Dictionary. It holds the value of variables.
+//
+// Slices are used only when doing bitwise_lhs operation.
+// In bitwise_lhs grammar, set the slice
+// In bitwise_lhs ASSIGN expr phase, reset the slice to be the whole range
 unordered_map <string, ValueSlice> valueSliceDict;
 
+// The slices variables Dictionary
 // A Dictionary that holds Slice as value and string as keys
 unordered_map <string, Slice> slicesDict;
 
 // Bitslice IDs Helper
 int bitsliceIDs = 0;
 
-// ## FUNCTIONS
-
-// Methods for ValueSlice
-
-// 1. Add value in the mask bits
-//
+// ## FUNCTIONS / HELPERS
 
 // Methods for SlicesDict
 
@@ -85,7 +84,9 @@ void addSlice(string key, Slice slice) {
 
 // Methods for ValueSliceDict 
 
-// Add a value to the ValueSlice dictionary
+// Add a value and slice to the ValueSlice dictionary
+//
+// Input: String, Value*, Value*, Value*
 void addValueSlice(string name, Value* value, Value* start, Value* range) {
   ValueSlice vs;
   vs.value = value;
@@ -97,7 +98,9 @@ void addValueSlice(string name, Value* value, Value* start, Value* range) {
   valueSliceDict.insert(make_pair(name, vs));
 }
 
-// Add a value to the ValueSlice dictionary
+// Add a value to the ValueSlice dictionary (Overloaded)
+// 
+// Input: String, Value*, Value*
 void addValueSlice(string name, Value* value, Slice slice) {
   ValueSlice vs;
   vs.value = value;
@@ -106,8 +109,9 @@ void addValueSlice(string name, Value* value, Slice slice) {
   valueSliceDict.insert(make_pair(name, vs));
 }
 
-// Add Slice to a ValueSlice dictionary
-void addSliceToValueSlice(string name, Slice slice) {
+// Update a Slice in the ValueSlice dictionary
+//
+void updateSliceInValueSlice(string name, Slice slice) {
   Value* value = valueSliceDict[name].value;
   addValueSlice(name, value, slice);
 }
@@ -301,8 +305,14 @@ statements:           statement
 
 statement:            bitslice_lhs ASSIGN expr ENDLINE 
                       { 
-                        // This is more complex than it seems
+                        // TODO: Use mask then assign
+                        // MASK is right shifted, a[4]:8 a[range]:start will output 0b000000001111
+                        // computed = AND Mask with expr 0000001111 && 000000001001
+                        // Shift computed value left by start 0000100100000000
+                        // Clear bits of bitslice_lhs Value at position MASK, by ANDing with !MASK 1111111000011111111
+                        // Use the shifted computed value and OR it with the above computed value
                         addNewValue(string($1), $3);
+                        // TODO: Cleanup Slice in valueSlice after assigning
                       }
                       | SLICE field_list ENDLINE
                       {
