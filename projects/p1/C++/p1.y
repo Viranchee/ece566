@@ -514,12 +514,17 @@ bitslice_lhs:         ID { $$ = $1; }
                       {
                         if (slicesDict.find(string($3)) != slicesDict.end())
                         {
-                          // key: ValueSlice Dictionary
-                          // ID: char, for Slice Dictionary
-                          // Add the Slice to ValueSlice's slice
+                          // x = 0; slice five:5
+                          // x.five = 1 doesn't work yet
+
+                          // Input: bitslice_lhs: char*, ID: char*
+
+                          // We get values from the char* Dictionaries: ValueSlice, Slice
                           Slice slice = slicesDict[(string)$3];
                           debug(slice.start, " <- Slice start");
                           debug(slice.range, " <- Slice range");
+
+                          // Output: Update ValueSlice's slice with new Slice
                           
                           // check if $1 is in ValueSliceDict else throw exception
                           if (valueSliceDict.find(string($1)) != valueSliceDict.end())
