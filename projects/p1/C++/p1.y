@@ -471,7 +471,7 @@ expr:                 bitslice  { $$ = $1; }
                       }
                       ;
 
-bitslice:             ID { $$ = getValue((string)$1); }
+bitslice:             ID { $$ = valueSliceDict[(string)$1].value; }
                       | NUMBER { $$ = Builder.getInt32($1);}
                       | bitslice_list { $$ = $1;}
                       | LPAREN expr RPAREN { $$ = $2;}
