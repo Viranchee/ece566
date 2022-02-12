@@ -491,7 +491,13 @@ bitslice_lhs:         ID { $$ = $1; }
                           Slice slice = slicesDict[(string)$3];
                           debug(slice.start, " <- Slice start");
                           debug(slice.range, " <- Slice range");
-                          addSliceToValueSlice(string($1), slice);
+                          
+                          // check if $1 is in ValueSliceDict else throw exception
+                          if (valueSliceDict.find(string($1)) != valueSliceDict.end())
+                          {
+                            updateSliceInValueSlice(string($1), slice);
+                          }
+                          else { yyerror("LHS value not found in ValueSlice dictionary"); }
                         }
                         else { YYERROR; }
                         $$ = $1;
