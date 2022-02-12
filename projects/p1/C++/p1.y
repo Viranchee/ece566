@@ -483,7 +483,11 @@ bitslice_list:        LBRACE bitslice_list_helper RBRACE { $$ = $2;}
                       ;
 
 bitslice_list_helper: bitslice { $$ = getLowestBit($1); }
-                      | bitslice_list_helper COMMA bitslice { $$ = do_leftshiftbyn_add($1,1,getLowestBit($3)); }
+                      | bitslice_list_helper COMMA bitslice 
+                      {
+                        // TODO: For wide bitslices, use a global variable
+                        $$ = do_leftshiftbyn_add($1,1,getLowestBit($3));
+                      }
 ;
 
 bitslice_lhs:         ID { $$ = $1; }
@@ -506,9 +510,6 @@ bitslice_lhs:         ID { $$ = $1; }
                           $$ = $1;
                         }
                         else { yyerror("Slice not found"); }
-
-
-                        
                        }
                       | bitslice_lhs DOT ID 
                       {
