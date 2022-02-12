@@ -2,5 +2,11 @@ P1 Programming Language
 
 Make test cases pass
 
-Use unsigned integer
+TODOs:
 
+1. Make Failing tests pass
+2. Remove unnecessary and unreachable code
+2. Add debugging
+2. Fix regular tests in order
+3. Use unsigned and signed
+3. Use LLVM bitwise operators
