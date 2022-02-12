@@ -482,10 +482,6 @@ bitslice_lhs:         ID { $$ = $1; }
                       | bitslice_lhs DOT ID 
                       {
                         // Todo18
-
-                        // key: ValueSlice Dictionary
-                        // ID: char, for Slice Dictionary
-                        // Add the Slice to ValueSlice's slice
                         if (slicesDict.find(string($3)) != slicesDict.end())
                         {
                           // key: ValueSlice Dictionary
