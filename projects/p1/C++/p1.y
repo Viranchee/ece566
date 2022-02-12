@@ -123,7 +123,7 @@ void addNewValue(string name, Value* value) {
   s.start = Builder.getInt32(0);
   s.range = Builder.getInt32(0xFFFFFFFF); // all 1s
   vs.slice = s;
-  valueSliceDict.insert(make_pair(name, vs));
+  valueSliceDict[name] = vs;
 }
 
 // Bit manipulation instructions
