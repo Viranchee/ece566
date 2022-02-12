@@ -64,7 +64,7 @@ struct ValueSlice {
 unordered_map <string, ValueSlice> valueSliceDict;
 
 // A Dictionary that holds Slice as value and string as keys
-unordered_map <string, Slice> SlicesDict;
+unordered_map <string, Slice> slicesDict;
 
 // Bitslice IDs Helper
 int bitsliceIDs = 0;
@@ -76,6 +76,17 @@ int bitsliceIDs = 0;
 // 1. Add value in the mask bits
 //
 
+// Methods for SlicesDict
+
+// Add Slice to the slicesDict dictionary
+void addSlice(string key, Slice slice) {
+  slicesDict.insert(pair<string, Slice>(key, slice));
+}
+
+// Get Slice from the slicesDict dictionary
+Slice getSlice(string key) {
+  return slicesDict.at(key);
+}
 
 // Methods for ValueSliceDict 
 
@@ -89,6 +100,21 @@ void addValueSlice(string name, Value* value, Value* start, Value* range) {
   vs.slice = s;
   // Insert vs into valueSliceDict
   valueSliceDict.insert(make_pair(name, vs));
+}
+
+// Add a value to the ValueSlice dictionary
+void addValueSlice(string name, Value* value, Slice slice) {
+  ValueSlice vs;
+  vs.value = value;
+  vs.slice = slice;
+  // Insert vs into valueSliceDict
+  valueSliceDict.insert(make_pair(name, vs));
+}
+
+// Add Slice to a ValueSlice dictionary
+void addSliceToValueSlice(string name, Slice slice) {
+  Value* value = valueSliceDict[name].value;
+  addValueSlice(name, value, slice);
 }
 
 void addNewValue(string name, Value* value) {
@@ -141,6 +167,45 @@ Value* do_leftshiftbyn_add(Value* value, Value* shift, Value* add) {
 Value* do_leftshiftbyn_add(Value* value, int shift, Value* add) {
   // Left shift $1 by 1, add $3 to it
   return do_leftshiftbyn_add(value, Builder.getInt32(shift), add);
+}
+
+Value* createMask(Value* start, Value* range) {
+  // Make all bits 1 from start to start + range
+
+  // start = 3, range = 2, N no. of bits
+  // 0000 0000 0001 1000 : output
+  // 1111 1111 1111 1111 >> start
+  // 0001 1111 1111 1111 << N-range
+  // 1100 0000 0000 0000 >> N - range - start = 12 -2 -3 = 7
+  // 0000 0000 0001 1000
+
+  // nMinusRange = N - range
+  Value* nMinusRange = Builder.CreateSub(Builder.getInt32(32), range);
+
+  Value* allOnes = Builder.getInt32(0xFFFFFFFF);
+  Value* rightShifted = Builder.CreateLShr(allOnes, start);
+  Value* leftShifted = Builder.CreateShl(rightShifted, nMinusRange);
+
+  // nMinusRangeMinusStart = N - range - start
+  Value* nMinusRangeMinusStart = Builder.CreateSub(nMinusRange, start);
+  debug(start, "start");
+  debug(range, "range");
+  debug(nMinusRangeMinusStart, "nMinusRangeMinusStart");
+  return nMinusRangeMinusStart;
+}
+
+Value* getMaskedValue(Value* value, Slice slice) {
+  // Input: slice(start, range), value
+  Value* mask = createMask(slice.start, slice.range);
+  // Output: value && MASK, right shift range or (range-1)
+  Value* valueAndMask = Builder.CreateAnd(mask, value);
+  Value* valueAligned = Builder.CreateLShr(valueAndMask, slice.start);
+  return valueAligned;
+}
+
+Value* getMaskedValue(string key) {
+  ValueSlice vs = getValueSlice(key);
+  return getMaskedValue(vs.value, vs.slice);
 }
 
 %}
@@ -279,16 +344,21 @@ field_list:           field_list COMMA field { printf("field_list COMMA field\n"
 field:                ID COLON expr 
                       {
                         // a:4
-                        // Make Slice struct with start and end as same, and store in SlicesDict
-                        cout << "Saved in SlicesDict: Key " << $1 << endl;
+                        // Make Slice struct with start=$3 and range=0, and store in slicesDict
+                        cout << "Saved in slicesDict: Key " << $1 << endl;
                         debug($3, " <- Value");
-                        SlicesDict[string($1)] = Slice{$3, $3};
+                        // TODO helper function
+                        Slice slice = Slice{$3, Builder.getInt32(0)};
+                        addSlice(string($1), slice);
                       }
                       | ID LBRACKET expr RBRACKET COLON expr 
                       {
+                        // a[4]:2
+                        // Make new Slice, start = $6, range = $3
+                        Slice slice = {$6, $3};
                         // Store the value in slices Dictionary
-                        // $3 is width, $6 is start, $1 is key
-                        // end 
+                        // TODO helper function
+                        addSlice(string($1), slice);
                       }
 // 566 only below
                       | ID 
@@ -296,7 +366,8 @@ field:                ID COLON expr
                         // global variable to track the current position
                         Value* id = Builder.getInt32(bitsliceIDs);
                         // Make Slice with start and end as bitsliceIDs
-                        SlicesDict[string($1)] = Slice{id, id};
+                        // TODO helper function
+                        addSlice(string($1), Slice{id, id});
                         // Increment bitsliceIDs
                         bitsliceIDs++;
                         // reset it at ENDLINE
@@ -315,6 +386,7 @@ expr:                 bitslice  { $$ = $1; }
                         // Flip the LSB, by using XOR operation with 1
                         Value* one = Builder.getInt32(1);
                         $$ = Builder.CreateXor($2, one);
+                        // TODO: Check running secret tests with Unsigned and Signed versions of code
                       }
                       | expr MUL expr     {$$ = Builder.CreateMul($1, $3);}
                       | expr DIV expr     {$$ = Builder.CreateSDiv($1, $3);}
@@ -406,10 +478,22 @@ bitslice:             ID { $$ = getValue((string)$1); }
                       | bitslice NUMBER { $$ = getBit($1,Builder.getInt32($2));}
                       | bitslice DOT ID 
                       {
-                        // From SlicesDict, get value of SliceDict using key ID
-                        Value* offset = SlicesDict[string($3)].start;
+                        // Todo18 Done
+                        // From slicesDict, grab value of Slice using key ID
+                        Slice slice = getSlice(string($3));
+                        debug(slice.start, " <- Slice start");
+                        debug(slice.range, " <- Slice range");
+                        // Input: slice(start, range), bitslice
+                        $$ = getMaskedValue($1, slice);
+
+                        // Value* mask = createMask(slice.start, slice.range);
+                        // // Output: bitslice && MASK, right shift range or (range-1)
+                        // Value* bsAndMask = Builder.CreateAnd(mask, $1);
+                        // Value* bsRShift = Builder.CreateLShr(bsAndMask, slice.start);
+                        // $$ = bsRShift;
+
                         // Get id bit from bitslice
-                        $$ = getBit($1, offset);
+                        // $$ = getBit($1, offset);
                       }
 // 566 only
                       | bitslice LBRACKET expr RBRACKET { $$ = getBit($1,$3); }
@@ -425,7 +509,26 @@ bitslice_list_helper: bitslice { $$ = getLowestBit($1); }
 
 bitslice_lhs:         ID { $$ = $1; }
                       | bitslice_lhs NUMBER { printf("bitslice_lhs NUMBER\n"); }
-                      | bitslice_lhs DOT ID { printf("bitslice_lhs DOT ID\n"); }
+                      | bitslice_lhs DOT ID 
+                      {
+                        // Todo18
+
+                        // key: ValueSlice Dictionary
+                        // ID: char, for Slice Dictionary
+                        // Add the Slice to ValueSlice's slice
+                        // TODO helper function
+                        Slice slice = getSlice(string($3));
+                        addSliceToValueSlice(string($1), slice);
+
+                        // Grab a Masked version of bitslice_lhs Value from ValueSliceDict
+                        // Value* masked_value = getMaskedValue(string($1));
+                        // $$ = masked_value;
+
+                        printf("bitslice_lhs DOT ID\n");
+                        
+                        $$ = $1;
+                        
+                      }
 // 566 only
                       | bitslice_lhs LBRACKET expr RBRACKET { printf("bitslice_lhs LBRACKET expr RBRACKET\n"); }
                       | bitslice_lhs LBRACKET expr COLON expr RBRACKET { printf("bitslice_lhs LBRACKET expr COLON expr RBRACKET\n"); }
