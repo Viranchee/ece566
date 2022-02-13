@@ -109,13 +109,6 @@ void addValueSlice(string name, Value* value, Slice slice) {
   valueSliceDict.insert(make_pair(name, vs));
 }
 
-// Update a Slice in the ValueSlice dictionary
-//
-void updateSliceInValueSlice(string name, Slice slice) {
-  Value* value = valueSliceDict[name].value;
-  addValueSlice(name, value, slice);
-}
-
 Slice defaultSlice() {
   Slice s;
   s.start = Builder.getInt32(0);
@@ -580,10 +573,11 @@ bitslice_lhs:         ID { $$ = $1; }
                           if (valueSliceDict.find(string($1)) != valueSliceDict.end())
                           {
                             // TODO: Check if value was updated
-                            updateSliceInValueSlice(string($1), slice);
-                            // Check if value was really updated
                             ValueSlice valueSlice = valueSliceDict[string($1)];
-                            debug(valueSlice.slice.range, "Updated in VSD ValueSlice range");
+                            valueSlice.slice = slice;
+                            valueSliceDict[string($1)] = valueSlice;
+                            // Check if value was really updated
+                            debug(valueSlice.slice.range, " = Range Updated in VSD ValueSlice range");
                           }
                           else { yyerror("LHS value not found in ValueSlice dictionary"); }
                         }
