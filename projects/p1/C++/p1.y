@@ -116,13 +116,17 @@ void updateSliceInValueSlice(string name, Slice slice) {
   addValueSlice(name, value, slice);
 }
 
+Slice defaultSlice() {
+  Slice s;
+  s.start = Builder.getInt32(0);
+  s.range = Builder.getInt32(31); // All 1s masked, from 0 to 31st bit, range = 31  return s;
+  return s;
+}
+
 void addNewValue(string name, Value* value) {
   ValueSlice vs;
   vs.value = value;
-  Slice s;
-  s.start = Builder.getInt32(0);
-  s.range = Builder.getInt32(31); // All 1s masked, from 0 to 31st bit, range = 31
-  vs.slice = s;
+  vs.slice = defaultSlice();
   valueSliceDict[name] = vs;
 }
 
@@ -307,15 +311,52 @@ statements:           statement
 statement:            bitslice_lhs ASSIGN expr ENDLINE 
                       { 
                         // TODO: Use mask then assign
-                        // Get valueSlice using bitslice_lhs
-                        // Get mask using slice of valueSlice
-                        // MASK is right shifted, a[4]:8 a[range]:start will output 0b000000001111
-                        // computed = AND Mask with expr 0000001111 && 000000001001
-                        // Shift left computed value left by start 0000100100000000
-                        // Clear bits of bitslice_lhs Value at position MASK, by ANDing with !MASK 1111111000011111111
-                        // Use the shifted computed value and OR it with the above computed value
-                        addNewValue(string($1), $3);
-                        // TODO: Cleanup Slice in valueSlice after assigning
+                        // Input: a[4]:4 = {1,0,0,1} = 0000 0000 0000 1001
+                        // value: a = xxxx xxxx xxxx xxxx
+                        // slice: start 4, range 4
+                        // expr: xxxx xxxx xxxx 1001
+
+                        // Output: xxxx xxxx 1001 xxxx
+
+                        // 0. Check if value present in valueSliceDict
+                        if(valueSliceDict.find(string($1)) != valueSliceDict.end())
+                        {
+                          // 0. Input parameters
+                          // Get valueSlice from valueSliceDict using bitslice_lhs key
+                          ValueSlice valueSlice = valueSliceDict[string($1)];
+                          debug(valueSlice.value, "valueSlice.value");
+
+                          Slice slice = valueSlice.slice;
+                          Value* value = valueSlice.value;
+                          
+                          // 1. Mask = 0000 0000 1111 0000
+                          // Get mask using slice of valueSlice
+                          Value* mask = createMask(slice.start, slice.range);
+
+                          // 2. expr = inputExpr << slice.start = xxxx xxxx 1001 xxxx
+                          Value* expr = Builder.CreateShl($3, slice.start);
+
+                          // 3. maskedExpr = Mask && expr = 0000 0000 1001 0000
+                          Value* maskedExpr = Builder.CreateAnd(mask, expr);
+
+                          // 4. invertedMask = 1111 1111 0000 1111
+                          Value* invertedMask = Builder.CreateNot(mask);
+
+                          // 5. safeValue = value && invertedMask = xxxx xxxx 0000 xxxx //reset the slice bits in value to 0
+                          Value* safeValue = Builder.CreateAnd(value, invertedMask);
+
+                          // 6. computedValue = maskedExpr | safeValue = xxxx xxxx 1001 xxxx
+                          Value* computedValue = Builder.CreateOr(maskedExpr, safeValue);
+
+                          // 7. Cleanup Slice in valueSlice after assigning the bitslice
+                          valueSlice.slice = defaultSlice();
+                          valueSliceDict[string($1)] = valueSlice;
+
+                        } else {
+                          // Value not in dictionary
+                          // So, just add it
+                          addNewValue(string($1), $3);
+                        }
                       }
                       | SLICE field_list ENDLINE
                       {
@@ -333,7 +374,7 @@ field:                ID COLON expr
                         // a:4
                         // Make Slice struct with start=$3 and range=0, and store in slicesDict
                         cout << "Saved in slicesDict: Key " << $1 << endl;
-                        debug($3, " <- Value");
+                        debug($3, "Value");
                         Slice slice = Slice{$3, Builder.getInt32(0)};
                         addSlice(string($1), slice);
                       }
@@ -522,6 +563,7 @@ bitslice_lhs:         ID { $$ = $1; }
 
                           // We get values from the char* Dictionaries: ValueSlice, Slice
                           Slice slice = slicesDict[(string)$3];
+
                           debug(slice.start, " <- Slice start");
                           debug(slice.range, " <- Slice range");
 
