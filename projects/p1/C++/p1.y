@@ -374,7 +374,7 @@ field:                ID COLON expr
                         // Make Slice struct with start=$3 and range=0, and store in slicesDict
                         cout << "Saved in slicesDict: Key " << $1 << endl;
                         debug($3, "Value");
-                        Slice slice = Slice{$3, Builder.getInt32(0)};
+                        Slice slice = Slice{$3, Builder.getInt32(1)};
                         addSlice(string($1), slice);
                       }
                       | ID LBRACKET expr RBRACKET COLON expr 
