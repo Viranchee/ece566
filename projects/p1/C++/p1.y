@@ -70,8 +70,8 @@ unordered_map <string, ValueSlice> valueSliceDict;
 // A Dictionary that holds Slice as value and string as keys
 unordered_map <string, Slice> slicesDict;
 
-// Bitslice IDs Helper
-int bitsliceIDs = 0;
+// BitsliceField IDs Helper
+vector<string> bitsliceFieldIds;
 
 // ## FUNCTIONS / HELPERS
 
@@ -352,8 +352,28 @@ statement:            bitslice_lhs ASSIGN expr ENDLINE
                       }
                       | SLICE field_list ENDLINE
                       {
+                        // Here, for cases {a,b,c}, a = 2, b = 1, c = 0
+                        // use an array, matches a then b then c
+                        // [a]
+                        // [b,a]
+                        // [c,b,a]
+                        // c = 0, b = 1, a = 2
+                        // For each field, set the slice value again in slicesDict
+
+                        int arg_no = 0;
+                        // For Loop over contents of global vector bitsliceFieldIds
+                        for(auto field: bitsliceFieldIds)
+                        {
+                          printf("field: %s\n", field.c_str());
+                          Slice slice = defaultSlice();
+                          slice.start = Builder.getInt32(arg_no);
+                          slicesDict[field] = slice;
+                          arg_no++;
+                        }
+
+
                         // reset the global variable here
-                        bitsliceIDs = 0;
+                        bitsliceFieldIds.clear();
                       }
                       ;
 
@@ -382,14 +402,9 @@ field:                ID COLON expr
 // 566 only below
                       | ID 
                       {
-                        // global variable to track the current position
-                        Value* id = Builder.getInt32(bitsliceIDs);
-                        // Make Slice with start and end as bitsliceIDs
-                        printf("TODO Fix below slice implementation");
-                        addSlice(string($1), Slice{id, id});
-                        // Increment bitsliceIDs
-                        bitsliceIDs++;
-                        // reset it at ENDLINE
+                        // Insert ID into bitsliceFieldIds at first position
+                        bitsliceFieldIds.insert(bitsliceFieldIds.begin(), string($1));
+                        // bitsliceFieldIds.push_back(string($1));
                       }
                       ;
 
