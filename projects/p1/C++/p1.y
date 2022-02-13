@@ -118,8 +118,8 @@ void updateSliceInValueSlice(string name, Slice slice) {
 
 Slice defaultSlice() {
   Slice s;
-  s.start = Builder.getInt32(0);
-  s.range = Builder.getInt32(31); // All 1s masked, from 0 to 31st bit, range = 31  return s;
+  s.start = Builder.getInt32(1);
+  s.range = Builder.getInt32(32);
   return s;
 }
 
@@ -371,7 +371,7 @@ field_list:           field_list COMMA field { printf("field_list COMMA field\n"
 field:                ID COLON expr 
                       {
                         // a:4
-                        // Make Slice struct with start=$3 and range=0, and store in slicesDict
+                        // Make Slice struct with start=$3 and range=1, and store in slicesDict
                         cout << "Saved in slicesDict: Key " << $1 << endl;
                         debug($3, "Value");
                         Slice slice = Slice{$3, Builder.getInt32(1)};
@@ -543,7 +543,7 @@ bitslice_lhs:         ID { $$ = $1; }
                           // Make and add a slice to the valueSliceDict[$1]
 
                           // Initialize a new slice, with start = $2, range = 1
-                          Slice slice = Slice{Builder.getInt32($2), Builder.getInt32(0)};
+                          Slice slice = Slice{Builder.getInt32($2), Builder.getInt32(1)};
 
                           // Add slice to valueSlice
                           valueSlice.slice = slice;
