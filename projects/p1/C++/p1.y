@@ -555,6 +555,7 @@ bitslice_list_helper: bitslice
                       | bitslice_list_helper COMMA bitslice 
                       {
                         // TODO: For wide bitslices, use a global variable
+
                         Value* bslice = bitsliceIsID ? getLowestBit($3) : $3;
                         bitsliceIsID = false;
                         $$ = do_leftshiftbyn_add($1,1,bslice);
@@ -602,12 +603,9 @@ bitslice_lhs:         ID { $$ = $1; }
                           // check if $1 is in ValueSliceDict else throw exception
                           if (valueSliceDict.find(string($1)) != valueSliceDict.end())
                           {
-                            // TODO: Check if value was updated
                             ValueSlice valueSlice = valueSliceDict[string($1)];
                             valueSlice.slice = slice;
                             valueSliceDict[string($1)] = valueSlice;
-                            // Check if value was really updated
-                            debug(valueSlice.slice.range, " = Range Updated in VSD ValueSlice range");
                           }
                           else { yyerror("LHS value not found in ValueSlice dictionary"); }
                         }
