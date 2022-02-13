@@ -15,7 +15,8 @@
 #include "llvm/IR/Function.h"
 #include "llvm/IR/Type.h"
 #include "llvm/IR/Verifier.h"
-
+#include "llvm/CodeGen/IntrinsicLowering.h"
+#include "llvm/IR/Intrinsics.h"
 #include "llvm/Bitcode/BitcodeReader.h"
 #include "llvm/Bitcode/BitcodeWriter.h"
 #include "llvm/Support/SystemUtils.h"
@@ -478,22 +479,15 @@ expr:                 bitslice  { $$ = $1; }
                       }
                       | REDUCE PLUS LPAREN expr RPAREN 
                       {
-                        // 00000 -> 0
-                        // 11111 -> 5
-                        // 01010 -> 2
-                        // 10101 -> 3
-                        
-                        // Add all the individual bits of expr
-                        Value* sum = Builder.getInt32(0);
-
-                        for (int i = 0; i < 32; i++)
-                        {
-                          // Get i bit from expr
-                          Value* bit = getBit($4, i);
-                          // Add the bit to sum
-                          sum = Builder.CreateAdd(sum, bit);
-                        }
-                        $$ = sum;
+                        // Return LLVM CTPOP instructions
+                        Function* ctpop = M->getFunction("llvm.ctpop.i32");
+                        vector<Type*>ctpop_args;
+                        ctpop_args.push_back(Builder.getInt32Ty());
+                        FunctionType *ctpop_type = FunctionType::get(Builder.getInt32Ty(), ctpop_args, false);
+                        ctpop = llvm::Function::Create(ctpop_type, GlobalValue::ExternalLinkage, "llvm.ctpop.i32", M);
+                        Value* ctpop_call = Builder.CreateCall(ctpop, $4);
+                        debug(ctpop_call, "ctpop_call");
+                        $$ = ctpop_call;
                       }
                       | EXPAND LPAREN expr RPAREN 
                       {                        
