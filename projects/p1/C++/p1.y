@@ -118,7 +118,7 @@ void updateSliceInValueSlice(string name, Slice slice) {
 
 Slice defaultSlice() {
   Slice s;
-  s.start = Builder.getInt32(1);
+  s.start = Builder.getInt32(0);
   s.range = Builder.getInt32(32);
   return s;
 }
@@ -164,6 +164,7 @@ Value* createMask(Value* start, Value* range) {
   // N = 32
   // For a[4]:8, start = 8, range = 4
   // 0000 1111 0000 0000 <- Output
+  // 0000 0000 0000 0001 <- start = 0, range = 1
 
   // 1. 1111 1111 1111 1111
   Value* stepOne = Builder.getInt32(0xFFFFFFFF);
@@ -171,11 +172,11 @@ Value* createMask(Value* start, Value* range) {
   // 2. 0000 0000 0000 1111
   // stepOne >> (N - range) = 12
   Value* stepTwo = Builder.CreateLShr(stepOne, Builder.CreateSub(Builder.getInt32(32), range));
+  debug(stepTwo, "stepTwo rightshifted");
 
   // 3. 0000 1111 0000 0000
   // stepTwo << start
-  Value* mask = Builder.CreateShl(stepTwo, Builder.CreateSub(start, Builder.getInt32(1)));
-  
+  Value* mask = Builder.CreateShl(stepTwo, start);  
   debug(mask, "mask");
   return mask;
 }
@@ -325,6 +326,8 @@ statement:            bitslice_lhs ASSIGN expr ENDLINE
                           debug(valueSlice.value, "valueSlice.value");
 
                           Slice slice = valueSlice.slice;
+                          debug(slice.start, "= slice.start");
+                          debug(slice.range, "= slice.range");
                           Value* value = valueSlice.value;
 
                           // 1. Mask = 0000 0000 1111 0000
@@ -336,6 +339,7 @@ statement:            bitslice_lhs ASSIGN expr ENDLINE
 
                           // 3. maskedExpr = Mask && expr = 0000 0000 1001 0000
                           Value* maskedExpr = Builder.CreateAnd(mask, expr);
+                          debug($3, "Old expression");
 
                           // 4. invertedMask = 1111 1111 0000 1111
                           Value* invertedMask = Builder.CreateNot(mask);
@@ -373,7 +377,7 @@ field:                ID COLON expr
                         // a:4
                         // Make Slice struct with start=$3 and range=1, and store in slicesDict
                         cout << "Saved in slicesDict: Key " << $1 << endl;
-                        debug($3, "Value");
+                        debug($3, "Start value");
                         Slice slice = Slice{$3, Builder.getInt32(1)};
                         addSlice(string($1), slice);
                       }
@@ -392,6 +396,7 @@ field:                ID COLON expr
                         // global variable to track the current position
                         Value* id = Builder.getInt32(bitsliceIDs);
                         // Make Slice with start and end as bitsliceIDs
+                        printf("TODO Fix below slice implementation");
                         addSlice(string($1), Slice{id, id});
                         // Increment bitsliceIDs
                         bitsliceIDs++;
@@ -513,7 +518,9 @@ bitslice:             ID { $$ = valueSliceDict[(string)$1].value; }
                           // Input: slice(start, range), bitslice
                           $$ = getMaskedValue($1, slice);
                         }
-                        else { yyerror("Slice not found"); }
+                        else { 
+                          printf("Key %s not found in slicesDict\n", string($3).c_str());
+                          yyerror("Slice not found in slicesDict"); }
                       }
 // 566 only
                       | bitslice LBRACKET expr RBRACKET { $$ = getBit($1,$3); }
@@ -550,7 +557,7 @@ bitslice_lhs:         ID { $$ = $1; }
                           
                           $$ = $1;
                         }
-                        else { yyerror("Slice not found"); }
+                        else { yyerror("Slice not found for bitslice_lhs"); }
                        }
                       | bitslice_lhs DOT ID 
                       {
@@ -572,7 +579,11 @@ bitslice_lhs:         ID { $$ = $1; }
                           // check if $1 is in ValueSliceDict else throw exception
                           if (valueSliceDict.find(string($1)) != valueSliceDict.end())
                           {
+                            // TODO: Check if value was updated
                             updateSliceInValueSlice(string($1), slice);
+                            // Check if value was really updated
+                            ValueSlice valueSlice = valueSliceDict[string($1)];
+                            debug(valueSlice.slice.range, "Updated in VSD ValueSlice range");
                           }
                           else { yyerror("LHS value not found in ValueSlice dictionary"); }
                         }
