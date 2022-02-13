@@ -157,26 +157,32 @@ Value* do_leftshiftbyn_add(Value* value, int shift, Value* add) {
 }
 
 Value* createMask(Value* start, Value* range) {
-  // TODO: Debug this
-  // Make all bits 1 from start to start + range
-
-  // start = 3, range = 2, N no. of bits
-  // 0000 0000 0001 1000 : output
-  // 1111 1111 1111 1111 >> start
-  // 0001 1111 1111 1111 << N - range
-  // 1100 0000 0000 0000 >> N - range - start = 16 -2 -3 = 11
-  // 0000 0000 0001 1000
-
-  // nMinusRange = N - range
-  Value* nMinusRange = Builder.CreateSub(Builder.getInt32(31), range);
-
-  Value* allOnes = Builder.getInt32(0xFFFFFFFF);
-  Value* rightShifted = Builder.CreateLShr(allOnes, start);
-  Value* leftShifted = Builder.CreateShl(rightShifted, nMinusRange);
-  // right shift by N - range - start
-  Value* mask = Builder.CreateLShr(leftShifted, Builder.CreateSub(nMinusRange, start));
   debug(start, "start");
   debug(range, "range");
+  // TODO: Debug this
+  // Make all bits 1 from start to (start + range - 1)
+  
+  // For a[4]:8, start = 8, range = 4
+  // 0000 1111 0000 0000 = 3840
+
+  // 1. 0001 0000 0000 0000 = 4096 = 2^12 = 2^(start + range)
+  Value* stepOne = Builder.CreateShl(Builder.getInt32(1), Builder.CreateAdd(start, range));
+
+  // 2. 0000 1111 1111 1111 = 4096 - 1 = 4095
+  // stepOne - 1
+  Value* stepTwo = Builder.CreateSub(stepOne, Builder.getInt32(1));
+
+  // 3. 0000 0001 0000 0000 = 256 = 2^8 = 2^(start)
+  // 2^start
+  Value* stepThree = Builder.CreateShl(Builder.getInt32(1), start);
+
+  // 4. 0000 0000 1111 1111 = 256 - 1 = 255
+  // stepThree - 1
+  Value* stepFour = Builder.CreateSub(stepThree, Builder.getInt32(1));
+
+  // 5. 4095 -255
+  Value* mask = Builder.CreateSub(stepTwo, stepFour);
+  
   debug(mask, "mask");
   return mask;
 }
@@ -309,7 +315,6 @@ statements:           statement
 
 statement:            bitslice_lhs ASSIGN expr ENDLINE 
                       {
-                        debug($3, "Z/50");
                         // TODO: Use mask then assign
                         // Input: a[4]:4 = {1,0,0,1} = 0000 0000 0000 1001
                         // value: a = xxxx xxxx xxxx xxxx
@@ -386,6 +391,7 @@ field:                ID COLON expr
                         Slice slice = {$6, $3};
                         // Store the value in slices Dictionary
                         addSlice(string($1), slice);
+                        debug(createMask(slice.start, slice.range), "Mask");
                       }
 // 566 only below
                       | ID 
