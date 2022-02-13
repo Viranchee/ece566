@@ -160,8 +160,8 @@ Value* createMask(Value* start, Value* range) {
   debug(start, "start");
   debug(range, "range");
   // TODO: Debug this
-  // Make all bits 1 from start to (start + range - 1)
-  
+  // Make all bits 1 from start to (start + range)
+  // N = 32
   // For a[4]:8, start = 8, range = 4
   // 0000 1111 0000 0000 <- Output
 
@@ -174,7 +174,7 @@ Value* createMask(Value* start, Value* range) {
 
   // 3. 0000 1111 0000 0000
   // stepTwo << start
-  Value* mask = Builder.CreateShl(stepTwo, start);
+  Value* mask = Builder.CreateShl(stepTwo, Builder.CreateSub(start, Builder.getInt32(1)));
   
   debug(mask, "mask");
   return mask;
