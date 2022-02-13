@@ -165,7 +165,6 @@ Value* createMask(Value* start, Value* range) {
   // 2. 0000 0000 0000 1111
   // stepOne >> (N - range) = 12
   Value* stepTwo = Builder.CreateLShr(stepOne, Builder.CreateSub(Builder.getInt32(32), range));
-  debug(stepTwo, "stepTwo rightshifted");
 
   // 3. 0000 1111 0000 0000
   // stepTwo << start
@@ -523,7 +522,7 @@ bitslice:             ID { $$ = valueSliceDict[(string)$1].value; }
 bitslice_list:        LBRACE bitslice_list_helper RBRACE { $$ = $2;}
                       ;
 
-bitslice_list_helper: bitslice { $$ = getLowestBit($1); }
+bitslice_list_helper: bitslice { $$ = $1; }
                       | bitslice_list_helper COMMA bitslice 
                       {
                         // TODO: For wide bitslices, use a global variable
@@ -586,7 +585,29 @@ bitslice_lhs:         ID { $$ = $1; }
                         
                       }
 // 566 only
-                      | bitslice_lhs LBRACKET expr RBRACKET { printf("bitslice_lhs LBRACKET expr RBRACKET\n"); }
+                      | bitslice_lhs LBRACKET expr RBRACKET 
+                      {
+                        // a[4]
+                        // Since this is bitslice_lhs, update value of slice in valueSliceDict
+                        // 0. check if valueSliceDict has key $1
+                        if (valueSliceDict.find(string($1)) != valueSliceDict.end())
+                        {
+                          // 1. Get valueSlice from valueSliceDict
+                          ValueSlice valueSlice = valueSliceDict[string($1)];
+                          
+                          // Make and add a slice to the valueSliceDict[$1]
+
+                          // 2. Initialize a new slice, with start = $3, range = 1
+                          Slice slice = Slice{$3, Builder.getInt32(1)};
+
+                          // 3. Add slice to valueSlice
+                          valueSlice.slice = slice;
+                          
+                          // 4. Update valueSliceDict with new slice
+                          valueSliceDict[string($1)] = valueSlice;
+                        }
+                        else { yyerror("Slice not found for bitslice_lhs"); }
+                      }
                       | bitslice_lhs LBRACKET expr COLON expr RBRACKET { printf("bitslice_lhs LBRACKET expr COLON expr RBRACKET\n"); }
 ;
 
