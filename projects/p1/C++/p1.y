@@ -163,23 +163,22 @@ Value* createMask(Value* start, Value* range) {
   // start = 3, range = 2, N no. of bits
   // 0000 0000 0001 1000 : output
   // 1111 1111 1111 1111 >> start
-  // 0001 1111 1111 1111 << N-range
-  // 1100 0000 0000 0000 >> N - range - start = 12 -2 -3 = 7
+  // 0001 1111 1111 1111 << N - range
+  // 1100 0000 0000 0000 >> N - range - start = 16 -2 -3 = 11
   // 0000 0000 0001 1000
 
   // nMinusRange = N - range
-  Value* nMinusRange = Builder.CreateSub(Builder.getInt32(32), range);
+  Value* nMinusRange = Builder.CreateSub(Builder.getInt32(31), range);
 
   Value* allOnes = Builder.getInt32(0xFFFFFFFF);
   Value* rightShifted = Builder.CreateLShr(allOnes, start);
   Value* leftShifted = Builder.CreateShl(rightShifted, nMinusRange);
-
-  // nMinusRangeMinusStart = N - range - start
-  Value* nMinusRangeMinusStart = Builder.CreateSub(nMinusRange, start);
+  // right shift by N - range - start
+  Value* mask = Builder.CreateLShr(leftShifted, Builder.CreateSub(nMinusRange, start));
   debug(start, "start");
   debug(range, "range");
-  debug(nMinusRangeMinusStart, "nMinusRangeMinusStart");
-  return nMinusRangeMinusStart;
+  debug(mask, "mask");
+  return mask;
 }
 
 Value* getMaskedValue(Value* value, Slice slice) {
@@ -309,7 +308,8 @@ statements:           statement
                       ;
 
 statement:            bitslice_lhs ASSIGN expr ENDLINE 
-                      { 
+                      {
+                        debug($3, "Z/50");
                         // TODO: Use mask then assign
                         // Input: a[4]:4 = {1,0,0,1} = 0000 0000 0000 1001
                         // value: a = xxxx xxxx xxxx xxxx
@@ -328,7 +328,7 @@ statement:            bitslice_lhs ASSIGN expr ENDLINE
 
                           Slice slice = valueSlice.slice;
                           Value* value = valueSlice.value;
-                          
+
                           // 1. Mask = 0000 0000 1111 0000
                           // Get mask using slice of valueSlice
                           Value* mask = createMask(slice.start, slice.range);
@@ -350,6 +350,7 @@ statement:            bitslice_lhs ASSIGN expr ENDLINE
 
                           // 7. Cleanup Slice in valueSlice after assigning the bitslice
                           valueSlice.slice = defaultSlice();
+                          valueSlice.value = computedValue;
                           valueSliceDict[string($1)] = valueSlice;
 
                         } else {
