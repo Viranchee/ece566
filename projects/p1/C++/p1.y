@@ -507,13 +507,34 @@ expr:                 bitslice  { $$ = $1; }
                       }
                       ;
 
-bitslice:             ID { bitsliceIsID = true; $$ = valueSliceDict[(string)$1].value; }
-                      | NUMBER { $$ = Builder.getInt32($1);}
-                      | bitslice_list { $$ = $1;}
-                      | LPAREN expr RPAREN { $$ = $2;}
-                      | bitslice NUMBER { $$ = getBit($1,Builder.getInt32($2));}
+bitslice:             ID 
+                      { 
+                        bitsliceIsID = true;
+                        $$ = valueSliceDict[(string)$1].value; 
+                      }
+                      | NUMBER 
+                      {
+                        bitsliceIsID = false;
+                        $$ = Builder.getInt32($1);
+                      }
+                      | bitslice_list 
+                      {
+                        $$ = $1;
+                      }
+                      | LPAREN expr RPAREN 
+                      {
+                        bitsliceIsID = false;
+                        $$ = $2;
+                      }
+                      | bitslice NUMBER
+                      {
+                        bitsliceIsID = false;
+                        $$ = getBit($1,Builder.getInt32($2));
+                      }
                       | bitslice DOT ID 
                       {
+                        bitsliceIsID = false;
+                        
                         // From slicesDict, grab value of Slice using key ID
                         // Check if slicesDict has key ID
                         if (slicesDict.find(string($3)) != slicesDict.end())
@@ -530,12 +551,21 @@ bitslice:             ID { bitsliceIsID = true; $$ = valueSliceDict[(string)$1].
                           yyerror("Slice not found in slicesDict"); }
                       }
 // 566 only
-                      | bitslice LBRACKET expr RBRACKET { $$ = getBit($1,$3); }
+                      | bitslice LBRACKET expr RBRACKET 
+                      {
+                        bitsliceIsID = false;
+                        
+                        $$ = getBit($1,$3); 
+                      }
                       | bitslice LBRACKET expr COLON expr RBRACKET 
                       {
+                        bitsliceIsID = false;
+
                         // [4:2], [4:4]
                         // start = $5 = 2, range = $3-$5+1 = 3 ; start = 4, range = 4-4+1 = 1
                         // range = $3 - $5 + 1)
+                        // add range to bitslice_widths
+                        bitslice_widths.push_back($3 - $5 + 1);
                         Value* range = Builder.CreateAdd(Builder.CreateSub($3, $5), Builder.getInt32(1));
                         Slice slice = Slice{$3, range};
                         $$ = getMaskedValue($1, slice);
