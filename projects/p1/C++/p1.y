@@ -78,6 +78,9 @@ vector<string> bitsliceFieldIds;
 bool bitsliceIsID = false;
 // ## FUNCTIONS / HELPERS
 
+// Bitslice range
+Value* bitsliceRange = Builder.getInt32(1);
+
 // Methods for SlicesDict
 
 // Add Slice to the slicesDict dictionary
@@ -510,11 +513,13 @@ expr:                 bitslice  { $$ = $1; }
 bitslice:             ID 
                       { 
                         bitsliceIsID = true;
+                        bitsliceRange = Builder.getInt32(1);
                         $$ = valueSliceDict[(string)$1].value; 
                       }
                       | NUMBER 
                       {
                         bitsliceIsID = false;
+                        bitsliceRange = Builder.getInt32(1);
                         $$ = Builder.getInt32($1);
                       }
                       | bitslice_list 
@@ -524,17 +529,18 @@ bitslice:             ID
                       | LPAREN expr RPAREN 
                       {
                         bitsliceIsID = false;
+                        bitsliceRange = Builder.getInt32(1);
                         $$ = $2;
                       }
                       | bitslice NUMBER
                       {
                         bitsliceIsID = false;
+                        bitsliceRange = Builder.getInt32(1);
                         $$ = getBit($1,Builder.getInt32($2));
                       }
                       | bitslice DOT ID 
                       {
                         bitsliceIsID = false;
-                        
                         // From slicesDict, grab value of Slice using key ID
                         // Check if slicesDict has key ID
                         if (slicesDict.find(string($3)) != slicesDict.end())
@@ -542,7 +548,7 @@ bitslice:             ID
                           Slice slice = slicesDict[string($3)];
                           debug(slice.start, " Slice start");
                           debug(slice.range, " Slice range");
-                          
+                          bitsliceRange = slice.range;
                           // Input: slice(start, range), bitslice
                           $$ = getMaskedValue($1, slice);
                         }
@@ -554,7 +560,7 @@ bitslice:             ID
                       | bitslice LBRACKET expr RBRACKET 
                       {
                         bitsliceIsID = false;
-                        
+                        bitsliceRange = Builder.getInt32(1);
                         $$ = getBit($1,$3); 
                       }
                       | bitslice LBRACKET expr COLON expr RBRACKET 
@@ -564,10 +570,9 @@ bitslice:             ID
                         // [4:2], [4:4]
                         // start = $5 = 2, range = $3-$5+1 = 3 ; start = 4, range = 4-4+1 = 1
                         // range = $3 - $5 + 1)
-                        // add range to bitslice_widths
-                        bitslice_widths.push_back($3 - $5 + 1);
                         Value* range = Builder.CreateAdd(Builder.CreateSub($3, $5), Builder.getInt32(1));
                         Slice slice = Slice{$3, range};
+                        bitsliceRange = range;
                         $$ = getMaskedValue($1, slice);
                       }
                       ;
@@ -588,7 +593,8 @@ bitslice_list_helper: bitslice
 
                         Value* bslice = bitsliceIsID ? getLowestBit($3) : $3;
                         bitsliceIsID = false;
-                        $$ = do_leftshiftbyn_add($1,1,bslice);
+                        $$ = do_leftshiftbyn_add($1,bitsliceRange,bslice);
+                        bitsliceRange = Builder.getInt32(1);
                       }
 ;
 
