@@ -531,7 +531,8 @@ bitslice_list_helper: bitslice { $$ = $1; }
                       | bitslice_list_helper COMMA bitslice 
                       {
                         // TODO: For wide bitslices, use a global variable
-                        $$ = do_leftshiftbyn_add($1,1,getLowestBit($3));
+                        // get bits 
+                        $$ = do_leftshiftbyn_add($1,1,$3);
                       }
 ;
 
