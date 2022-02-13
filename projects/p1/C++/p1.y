@@ -163,25 +163,18 @@ Value* createMask(Value* start, Value* range) {
   // Make all bits 1 from start to (start + range - 1)
   
   // For a[4]:8, start = 8, range = 4
-  // 0000 1111 0000 0000 = 3840
+  // 0000 1111 0000 0000 <- Output
 
-  // 1. 0001 0000 0000 0000 = 4096 = 2^12 = 2^(start + range)
-  Value* stepOne = Builder.CreateShl(Builder.getInt32(1), Builder.CreateAdd(start, range));
+  // 1. 1111 1111 1111 1111
+  Value* stepOne = Builder.getInt32(0xFFFFFFFF);
 
-  // 2. 0000 1111 1111 1111 = 4096 - 1 = 4095
-  // stepOne - 1
-  Value* stepTwo = Builder.CreateSub(stepOne, Builder.getInt32(1));
+  // 2. 0000 0000 0000 1111
+  // stepOne >> (N - range) = 12
+  Value* stepTwo = Builder.CreateLShr(stepOne, Builder.CreateSub(Builder.getInt32(32), range));
 
-  // 3. 0000 0001 0000 0000 = 256 = 2^8 = 2^(start)
-  // 2^start
-  Value* stepThree = Builder.CreateShl(Builder.getInt32(1), start);
-
-  // 4. 0000 0000 1111 1111 = 256 - 1 = 255
-  // stepThree - 1
-  Value* stepFour = Builder.CreateSub(stepThree, Builder.getInt32(1));
-
-  // 5. 4095 -255
-  Value* mask = Builder.CreateSub(stepTwo, stepFour);
+  // 3. 0000 1111 0000 0000
+  // stepTwo << start
+  Value* mask = Builder.CreateShl(stepTwo, start);
   
   debug(mask, "mask");
   return mask;
