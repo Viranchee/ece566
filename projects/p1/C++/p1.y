@@ -8,6 +8,7 @@
 #include <string>
 #include <memory>
 #include <stdexcept>
+#include <stdbool.h>
 
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/Value.h"
@@ -73,6 +74,8 @@ unordered_map <string, Slice> slicesDict;
 // BitsliceField IDs Helper
 vector<string> bitsliceFieldIds;
 
+// Tracking {a,b,c}
+bool bitsliceIsID = false;
 // ## FUNCTIONS / HELPERS
 
 // Methods for SlicesDict
@@ -504,7 +507,7 @@ expr:                 bitslice  { $$ = $1; }
                       }
                       ;
 
-bitslice:             ID { $$ = valueSliceDict[(string)$1].value; }
+bitslice:             ID { bitsliceIsID = true; $$ = valueSliceDict[(string)$1].value; }
                       | NUMBER { $$ = Builder.getInt32($1);}
                       | bitslice_list { $$ = $1;}
                       | LPAREN expr RPAREN { $$ = $2;}
@@ -542,12 +545,19 @@ bitslice:             ID { $$ = valueSliceDict[(string)$1].value; }
 bitslice_list:        LBRACE bitslice_list_helper RBRACE { $$ = $2;}
                       ;
 
-bitslice_list_helper: bitslice { $$ = $1; }
+bitslice_list_helper: bitslice 
+                      {
+                        // Information: bitslice Val* object
+                        // start tracking bitslice
+                        $$ = bitsliceIsID ? getLowestBit($1) : $1;
+                        bitsliceIsID = false;
+                      }
                       | bitslice_list_helper COMMA bitslice 
                       {
                         // TODO: For wide bitslices, use a global variable
-                        // get bits 
-                        $$ = do_leftshiftbyn_add($1,1,$3);
+                        Value* bslice = bitsliceIsID ? getLowestBit($3) : $3;
+                        bitsliceIsID = false;
+                        $$ = do_leftshiftbyn_add($1,1,bslice);
                       }
 ;
 
