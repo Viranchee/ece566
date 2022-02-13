@@ -150,9 +150,6 @@ Value* do_leftshiftbyn_add(Value* value, int shift, Value* add) {
 }
 
 Value* createMask(Value* start, Value* range) {
-  debug(start, "start");
-  debug(range, "range");
-  // TODO: Debug this
   // Make all bits 1 from start to (start + range)
   // N = 32
   // For a[4]:8, start = 8, range = 4
@@ -301,7 +298,7 @@ statements:           statement
 
 statement:            bitslice_lhs ASSIGN expr ENDLINE 
                       {
-                        // TODO: Use mask then assign
+                        // Use mask then assign
                         // Input: a[4]:4 = {1,0,0,1} = 0000 0000 0000 1001
                         // value: a = xxxx xxxx xxxx xxxx
                         // slice: start 4, range 4
@@ -516,7 +513,15 @@ bitslice:             ID { $$ = valueSliceDict[(string)$1].value; }
                       }
 // 566 only
                       | bitslice LBRACKET expr RBRACKET { $$ = getBit($1,$3); }
-                      | bitslice LBRACKET expr COLON expr RBRACKET { printf("bitslice LBRACKET expr COLON expr RBRACKET\n"); }
+                      | bitslice LBRACKET expr COLON expr RBRACKET 
+                      {
+                        // [4:2], [4:4]
+                        // start = $5 = 2, range = $3-$5+1 = 3 ; start = 4, range = 4-4+1 = 1
+                        // range = $3 - $5 + 1)
+                        Value* range = Builder.CreateAdd(Builder.CreateSub($3, $5), Builder.getInt32(1));
+                        Slice slice = Slice{$3, range};
+                        $$ = getMaskedValue($1, slice);
+                      }
                       ;
 
 bitslice_list:        LBRACE bitslice_list_helper RBRACE { $$ = $2;}
@@ -608,7 +613,29 @@ bitslice_lhs:         ID { $$ = $1; }
                         }
                         else { yyerror("Slice not found for bitslice_lhs"); }
                       }
-                      | bitslice_lhs LBRACKET expr COLON expr RBRACKET { printf("bitslice_lhs LBRACKET expr COLON expr RBRACKET\n"); }
+                      | bitslice_lhs LBRACKET expr COLON expr RBRACKET 
+                      {
+                        // [4:2], [4:4]
+                        // start = $5 = 2, range = $3-$5+1 = 3 ; start = 4, range = 4-4+1 = 1
+                        // range = $3 - $5 + 1)
+                        Value* range = Builder.CreateAdd(Builder.CreateSub($3, $5), Builder.getInt32(1));
+                        Slice slice = Slice{$3, range};
+
+                        // Update slice in valueSlice dictionary
+                        // 0. check if valueSliceDict has key $1
+                        if (valueSliceDict.find(string($1)) != valueSliceDict.end())
+                        {
+                          // 1. Get valueSlice from valueSliceDict
+                          ValueSlice valueSlice = valueSliceDict[string($1)];
+                          
+                          // 2. Update valueSlice's slice with new Slice
+                          valueSlice.slice = slice;
+                          
+                          // 3. Update valueSliceDict with new slice
+                          valueSliceDict[string($1)] = valueSlice;
+                        }
+                        else { yyerror("Slice not found for bitslice_lhs"); }
+                      }
 ;
 
 %%
