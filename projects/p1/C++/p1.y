@@ -345,7 +345,7 @@ statement:            bitslice_lhs ASSIGN expr ENDLINE
                           // 6. computedValue = maskedExpr | safeValue = xxxx xxxx 1001 xxxx
                           Value* computedValue = Builder.CreateOr(maskedExpr, safeValue);
 
-                          // 7. Cleanup Slice in valueSlice after assigning the bitslice
+                          // 7. Cleanup Slice Mask in valueSlice after assigning the bitslice
                           valueSlice.slice = defaultSlice();
                           valueSlice.value = computedValue;
                           valueSliceDict[string($1)] = valueSlice;
@@ -624,26 +624,39 @@ bitslice_lhs:         ID { $$ = $1; }
                         if (slicesDict.find(string($3)) != slicesDict.end())
                         {
                           // x = 0; slice five:5
-                          // x.five = 1 doesn't work yet
 
                           // Input: bitslice_lhs: char*, ID: char*
 
                           // We get values from the char* Dictionaries: ValueSlice, Slice
                           Slice slice = slicesDict[(string)$3];
 
-                          debug(slice.start, " <- Slice start");
-                          debug(slice.range, " <- Slice range");
+                          debug(slice.start, "Slice start");
+                          debug(slice.range, "Slice range");
 
                           // Output: Update ValueSlice's slice with new Slice
                           
+                          ValueSlice valueSlice;
                           // check if $1 is in ValueSliceDict else throw exception
                           if (valueSliceDict.find(string($1)) != valueSliceDict.end())
                           {
-                            ValueSlice valueSlice = valueSliceDict[string($1)];
-                            valueSlice.slice = slice;
-                            valueSliceDict[string($1)] = valueSlice;
+                            valueSlice = valueSliceDict[string($1)];
+                            // existing slice
+                            Slice existingSlice = valueSlice.slice;
+                            
+                            // Slice the slice further
+                            // existingSlice, slice
+                            // Start = existingSlice.start + slice.start
+                            Value* start = Builder.CreateAdd(existingSlice.start, slice.start);                           
+                            Slice newSlice = Slice{start, slice.range};
+                            valueSlice.slice = newSlice;
                           }
-                          else { yyerror("LHS value not found in ValueSlice dictionary"); }
+                          else {
+                             // If not found, create a new value
+                              valueSlice = ValueSlice{Builder.getInt32(0), slice};
+                          }
+
+                          valueSliceDict[string($1)] = valueSlice;
+                          debug(valueSlice.slice.start, "ValueSlice start");
                         }
                         else { YYERROR; }
                         $$ = $1;
