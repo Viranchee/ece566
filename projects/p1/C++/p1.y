@@ -173,7 +173,6 @@ Value* createMask(Value* start, Value* range) {
   // 3. 0000 1111 0000 0000
   // stepTwo << start
   Value* mask = Builder.CreateShl(stepTwo, start);  
-  debug(mask, "mask");
   return mask;
 }
 
@@ -319,11 +318,8 @@ statement:            bitslice_lhs ASSIGN expr ENDLINE
                           // 0. Input parameters
                           // Get valueSlice from valueSliceDict using bitslice_lhs key
                           ValueSlice valueSlice = valueSliceDict[string($1)];
-                          debug(valueSlice.value, "valueSlice.value");
 
                           Slice slice = valueSlice.slice;
-                          debug(slice.start, "= slice.start");
-                          debug(slice.range, "= slice.range");
                           Value* value = valueSlice.value;
 
                           // 1. Mask = 0000 0000 1111 0000
@@ -335,7 +331,6 @@ statement:            bitslice_lhs ASSIGN expr ENDLINE
 
                           // 3. maskedExpr = Mask && expr = 0000 0000 1001 0000
                           Value* maskedExpr = Builder.CreateAnd(mask, expr);
-                          debug($3, "Old expression");
 
                           // 4. invertedMask = 1111 1111 0000 1111
                           Value* invertedMask = Builder.CreateNot(mask);
@@ -371,7 +366,6 @@ statement:            bitslice_lhs ASSIGN expr ENDLINE
                         // For Loop over contents of global vector bitsliceFieldIds
                         for(auto field: bitsliceFieldIds)
                         {
-                          printf("field: %s\n", field.c_str());
                           Slice slice = defaultSlice();
                           slice.start = Builder.getInt32(arg_no);
                           slicesDict[field] = slice;
@@ -384,16 +378,15 @@ statement:            bitslice_lhs ASSIGN expr ENDLINE
                       }
                       ;
 
-field_list:           field_list COMMA field { printf("field_list COMMA field\n"); }
-                      | field { printf("field\n"); }
+field_list:           field_list COMMA field
+                      | field
                       ;
 
 field:                ID COLON expr 
                       {
                         // a:4
                         // Make Slice struct with start=$3 and range=1, and store in slicesDict
-                        cout << "Saved in slicesDict: Key " << $1 << endl;
-                        debug($3, "Start value");
+
                         Slice slice = Slice{$3, Builder.getInt32(1)};
                         addSlice(string($1), slice);
                       }
@@ -404,7 +397,6 @@ field:                ID COLON expr
                         Slice slice = {$6, $3};
                         // Store the value in slices Dictionary
                         addSlice(string($1), slice);
-                        debug(createMask(slice.start, slice.range), "Mask");
                       }
 // 566 only below
                       | ID 
@@ -486,7 +478,6 @@ expr:                 bitslice  { $$ = $1; }
                         FunctionType *ctpop_type = FunctionType::get(Builder.getInt32Ty(), ctpop_args, false);
                         ctpop = llvm::Function::Create(ctpop_type, GlobalValue::ExternalLinkage, "llvm.ctpop.i32", M);
                         Value* ctpop_call = Builder.CreateCall(ctpop, $4);
-                        debug(ctpop_call, "ctpop_call");
                         $$ = ctpop_call;
                       }
                       | EXPAND LPAREN expr RPAREN 
@@ -540,8 +531,6 @@ bitslice:             ID
                         if (slicesDict.find(string($3)) != slicesDict.end())
                         {
                           Slice slice = slicesDict[string($3)];
-                          debug(slice.start, " Slice start");
-                          debug(slice.range, " Slice range");
                           bitsliceRange = slice.range;
                           // Input: slice(start, range), bitslice
                           $$ = getMaskedValue($1, slice);
@@ -624,9 +613,6 @@ bitslice_lhs:         ID { $$ = $1; }
                           // We get values from the char* Dictionaries: ValueSlice, Slice
                           Slice slice = slicesDict[(string)$3];
 
-                          debug(slice.start, "Slice start");
-                          debug(slice.range, "Slice range");
-
                           // Output: Update ValueSlice's slice with new Slice
                           
                           ValueSlice valueSlice;
@@ -650,7 +636,6 @@ bitslice_lhs:         ID { $$ = $1; }
                           }
 
                           valueSliceDict[string($1)] = valueSlice;
-                          debug(valueSlice.slice.start, "ValueSlice start");
                         }
                         else { YYERROR; }
                         $$ = $1;
