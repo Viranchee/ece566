@@ -3,17 +3,20 @@
 #include <list>
 #include <vector>
 #include <map>
+#include <unordered_map>
 #include <iostream>
 #include <string>
 #include <memory>
 #include <stdexcept>
+#include <stdbool.h>
 
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/Value.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/Type.h"
 #include "llvm/IR/Verifier.h"
-
+#include "llvm/CodeGen/IntrinsicLowering.h"
+#include "llvm/IR/Intrinsics.h"
 #include "llvm/Bitcode/BitcodeReader.h"
 #include "llvm/Bitcode/BitcodeWriter.h"
 #include "llvm/Support/SystemUtils.h"
@@ -35,21 +38,184 @@ string funName;
 Module *M;
 LLVMContext TheContext;
 IRBuilder<> Builder(TheContext);
- 
+
+// ## DEBUGGING
+void debug(Value* val, string message) {
+  val->print(errs(), true);
+  printf(" <- %s\n", message.c_str());
+}
+
+// ## TYPES
+
+// A struct which holds Index and Range
+struct Slice {
+  Value* start;
+  Value* range;
+};
+
+// A struct which holds values, index and range
+struct ValueSlice {
+  Value* value;
+  Slice slice;
+};
+
+// ## GLOBAL VARIABLES
+
+// The values variable Dictionary. It holds the value of variables.
+//
+// Slices are used only when doing bitwise_lhs operation.
+// In bitwise_lhs grammar, set the slice
+// In bitwise_lhs ASSIGN expr phase, reset the slice to be the whole range
+unordered_map <string, ValueSlice> valueSliceDict;
+
+// The slices variables Dictionary
+// A Dictionary that holds Slice as value and string as keys
+unordered_map <string, Slice> slicesDict;
+
+// BitsliceField IDs Helper
+vector<string> bitsliceFieldIds;
+
+// Tracking {a,b,c}
+bool bitsliceIsID = false;
+// ## FUNCTIONS / HELPERS
+
+// Bitslice range
+Value* bitsliceRange = Builder.getInt32(1);
+
+// Methods for SlicesDict
+
+// Add Slice to the slicesDict dictionary
+void addSlice(string key, Slice slice) {
+  slicesDict.insert(pair<string, Slice>(key, slice));
+}
+
+// Methods for ValueSliceDict 
+
+// Add a value and slice to the ValueSlice dictionary
+//
+// Input: String, Value*, Value*, Value*
+void addValueSlice(string name, Value* value, Value* start, Value* range) {
+  ValueSlice vs;
+  vs.value = value;
+  Slice s;
+  s.start = start;
+  s.range = range;
+  vs.slice = s;
+  // Insert vs into valueSliceDict
+  valueSliceDict.insert(make_pair(name, vs));
+}
+
+// Add a value to the ValueSlice dictionary (Overloaded)
+// 
+// Input: String, Value*, Value*
+void addValueSlice(string name, Value* value, Slice slice) {
+  ValueSlice vs;
+  vs.value = value;
+  vs.slice = slice;
+  // Insert vs into valueSliceDict
+  valueSliceDict.insert(make_pair(name, vs));
+}
+
+Slice defaultSlice() {
+  Slice s;
+  s.start = Builder.getInt32(0);
+  s.range = Builder.getInt32(32);
+  return s;
+}
+
+void addNewValue(string name, Value* value) {
+  ValueSlice vs;
+  vs.value = value;
+  vs.slice = defaultSlice();
+  valueSliceDict[name] = vs;
+}
+
+// Bit manipulation instructions
+
+// Create a function to retrive a bit from llvm builder value
+Value* getBit(Value* value, Value* position) {
+  return Builder.CreateAnd(Builder.CreateLShr(value, position), Builder.getInt32(1));
+}
+
+// Create a function to retrive a bit from llvm builder value
+Value* getBit(Value* value, int position) {
+  return Builder.CreateAnd(Builder.CreateLShr(value, position), Builder.getInt32(1));
+}
+
+// Get lowest bit from integer
+Value* getLowestBit(Value* value) {
+  return Builder.CreateAnd(value, Builder.getInt32(1));
+}
+
+Value* do_leftshiftbyn_add(Value* value, Value* shift, Value* add) {
+  return Builder.CreateAdd(Builder.CreateShl(value, shift), add);
+}
+
+Value* do_leftshiftbyn_add(Value* value, int shift, Value* add) {
+  // Left shift $1 by 1, add $3 to it
+  return do_leftshiftbyn_add(value, Builder.getInt32(shift), add);
+}
+
+Value* createMask(Value* start, Value* range) {
+  // Make all bits 1 from start to (start + range)
+  // N = 32
+  // For a[4]:8, start = 8, range = 4
+  // 0000 1111 0000 0000 <- Output
+  // 0000 0000 0000 0001 <- start = 0, range = 1
+
+  // 1. 1111 1111 1111 1111
+  Value* stepOne = Builder.getInt32(0xFFFFFFFF);
+
+  // 2. 0000 0000 0000 1111
+  // stepOne >> (N - range) = 12
+  Value* stepTwo = Builder.CreateLShr(stepOne, Builder.CreateSub(Builder.getInt32(32), range));
+
+  // 3. 0000 1111 0000 0000
+  // stepTwo << start
+  Value* mask = Builder.CreateShl(stepTwo, start);  
+  return mask;
+}
+
+Value* getMaskedValue(Value* value, Slice slice) {
+  // Input: slice(start, range), value
+  Value* mask = createMask(slice.start, slice.range);
+  // Output: value && MASK, right shift range or (range-1)
+  Value* valueAndMask = Builder.CreateAnd(mask, value);
+  Value* valueAligned = Builder.CreateLShr(valueAndMask, slice.start);
+  return valueAligned;
+}
+
 %}
 
 %union {
   vector<string> *params_list;
+  int num;
+  char* id;
+  Value *val;
 }
 
 /*%define parse.trace*/
 
 %type <params_list> params_list
 
+%type <val> expr
+%type <val> final
+%type <val> bitslice
+%type <val> bitslice_list
+%type <val> bitslice_list_helper
+%type <id> bitslice_lhs
+
+%type <val> field
+%type <val> field_list
+
+%type <val> statement
+%type <val> statements
+%type <val> statements_opt
+
 %token IN FINAL SLICE
 %token ERROR
-%token NUMBER
-%token ID 
+%token <num> NUMBER
+%token <id> ID
 %token BINV INV PLUS MINUS XOR AND OR MUL DIV MOD
 %token COMMA ENDLINE ASSIGN LBRACKET RBRACKET LPAREN RPAREN NONE COLON
 %token LBRACE RBRACE DOT
@@ -64,137 +230,462 @@ IRBuilder<> Builder(TheContext);
 
 %%
 
-program: inputs statements_opt final
-{
-  YYACCEPT;
-}
-;
+program:              inputs statements_opt final { YYACCEPT;}
 
-inputs:   IN params_list ENDLINE
-{  
-  std::vector<Type*> param_types;
-  for(auto s: *$2)
-    {
-      param_types.push_back(Builder.getInt32Ty());
-    }
-  ArrayRef<Type*> Params (param_types);
-  
-  // Create int function type with no arguments
-  FunctionType *FunType = 
-    FunctionType::get(Builder.getInt32Ty(),Params,false);
+inputs:               IN params_list ENDLINE
+                      {  
+                        std::vector<Type*> param_types;
+                        for(auto s: *$2)
+                          {
+                            param_types.push_back(Builder.getInt32Ty());
+                          }
+                        ArrayRef<Type*> Params (param_types);
+                        
+                        // Create int function type with no arguments
+                        FunctionType *FunType = 
+                          FunctionType::get(Builder.getInt32Ty(),Params,false);
 
-  // Create a main function
-  Function *Function = Function::Create(FunType,GlobalValue::ExternalLinkage,funName,M);
+                        // Create a main function
+                        Function *Function = Function::Create(FunType,GlobalValue::ExternalLinkage,funName,M);
 
-  int arg_no=0;
-  for(auto &a: Function->args()) {
-    // iterate over arguments of function
-    // match name to position
-  }
-  
-  //Add a basic block to main to hold instructions, and set Builder
-  //to insert there
-  Builder.SetInsertPoint(BasicBlock::Create(TheContext, "entry", Function));
+                        int arg_no=0;
+                        for(auto &a: Function->args()) {
+                          // iterate over arguments of function
+                          // get first element from vector $2,
+                          string arg_name = $2->at(arg_no);
+                          // match name to position
+                          addNewValue(arg_name, &a);
+                          arg_no++;
+                        }
+                        
+                        //Add a basic block to main to hold instructions, and set Builder
+                        //to insert there
+                        Builder.SetInsertPoint(BasicBlock::Create(TheContext, "entry", Function));
 
-}
-| IN NONE ENDLINE
-{ 
-  // Create int function type with no arguments
-  FunctionType *FunType = 
-    FunctionType::get(Builder.getInt32Ty(),false);
+                      }
+                      | IN NONE ENDLINE
+                      { 
+                        // Create int function type with no arguments
+                        FunctionType *FunType = 
+                          FunctionType::get(Builder.getInt32Ty(),false);
 
-  // Create a main function
-  Function *Function = Function::Create(FunType,  
-         GlobalValue::ExternalLinkage,funName,M);
+                        // Create a main function
+                        Function *Function = Function::Create(FunType,  
+                              GlobalValue::ExternalLinkage,funName,M);
 
-  //Add a basic block to main to hold instructions, and set Builder
-  //to insert there
-  Builder.SetInsertPoint(BasicBlock::Create(TheContext, "entry", Function));
-}
-;
+                        //Add a basic block to main to hold instructions, and set Builder
+                        //to insert there
+                        Builder.SetInsertPoint(BasicBlock::Create(TheContext, "entry", Function));
+                      }
+                      ;
 
-params_list: ID
-{
-  $$ = new vector<string>;
-  // add ID to vector
-}
-| params_list COMMA ID
-{
-  // add ID to $1
-}
-;
+params_list:          ID
+                      {
+                        $$ = new vector<string>;
+                        // add ID to vector
+                        $$->push_back(string($1));
+                      }
+                      | params_list COMMA ID
+                      {
+                        // add ID to $1
+                        $$->push_back(string($3));
+                      }
+                      ;
 
-final: FINAL expr ENDLINE
-{
-  // FIX ME, ALWAYS RETURNS 0
-  Builder.CreateRet(Builder.getInt32(0));
-}
-;
+final:                FINAL expr ENDLINE { Builder.CreateRet($2); }
+                      ;
 
-statements_opt: %empty
-            | statements;
+statements_opt:       %empty {}
+                      | statements;
 
-statements:   statement 
-            | statements statement 
-;
+statements:           statement
+                      | statements statement 
+                      ;
 
-statement: bitslice_lhs ASSIGN expr ENDLINE
-| SLICE field_list ENDLINE
-;
+statement:            bitslice_lhs ASSIGN expr ENDLINE 
+                      {
+                        // Use mask then assign
+                        // Input: a[4]:4 = {1,0,0,1} = 0000 0000 0000 1001
+                        // value: a = xxxx xxxx xxxx xxxx
+                        // slice: start 4, range 4
+                        // expr: xxxx xxxx xxxx 1001
 
-field_list : field_list COMMA field
-           | field
-;
+                        // Output: xxxx xxxx 1001 xxxx
 
-field : ID COLON expr
-| ID LBRACKET expr RBRACKET COLON expr
+                        // 0. Check if value present in valueSliceDict
+                        if(valueSliceDict.find(string($1)) != valueSliceDict.end())
+                        {
+                          // 0. Input parameters
+                          // Get valueSlice from valueSliceDict using bitslice_lhs key
+                          ValueSlice valueSlice = valueSliceDict[string($1)];
+
+                          Slice slice = valueSlice.slice;
+                          Value* value = valueSlice.value;
+
+                          // 1. Mask = 0000 0000 1111 0000
+                          // Get mask using slice of valueSlice
+                          Value* mask = createMask(slice.start, slice.range);
+
+                          // 2. expr = inputExpr << slice.start = xxxx xxxx 1001 xxxx
+                          Value* expr = Builder.CreateShl($3, slice.start);
+
+                          // 3. maskedExpr = Mask && expr = 0000 0000 1001 0000
+                          Value* maskedExpr = Builder.CreateAnd(mask, expr);
+
+                          // 4. invertedMask = 1111 1111 0000 1111
+                          Value* invertedMask = Builder.CreateNot(mask);
+
+                          // 5. safeValue = value && invertedMask = xxxx xxxx 0000 xxxx //reset the slice bits in value to 0
+                          Value* safeValue = Builder.CreateAnd(value, invertedMask);
+
+                          // 6. computedValue = maskedExpr | safeValue = xxxx xxxx 1001 xxxx
+                          Value* computedValue = Builder.CreateOr(maskedExpr, safeValue);
+
+                          // 7. Cleanup Slice Mask in valueSlice after assigning the bitslice
+                          valueSlice.slice = defaultSlice();
+                          valueSlice.value = computedValue;
+                          valueSliceDict[string($1)] = valueSlice;
+
+                        } else {
+                          // Value not in dictionary
+                          // So, just add it
+                          addNewValue(string($1), $3);
+                        }
+                      }
+                      | SLICE field_list ENDLINE
+                      {
+                        // Here, for cases {a,b,c}, a = 2, b = 1, c = 0
+                        // use an array, matches a then b then c
+                        // [a]
+                        // [b,a]
+                        // [c,b,a]
+                        // c = 0, b = 1, a = 2
+                        // For each field, set the slice value again in slicesDict
+
+                        int arg_no = 0;
+                        // For Loop over contents of global vector bitsliceFieldIds
+                        for(auto field: bitsliceFieldIds)
+                        {
+                          Slice slice = defaultSlice();
+                          slice.start = Builder.getInt32(arg_no);
+                          slicesDict[field] = slice;
+                          arg_no++;
+                        }
+
+
+                        // reset the global variable here
+                        bitsliceFieldIds.clear();
+                      }
+                      ;
+
+field_list:           field_list COMMA field
+                      | field
+                      ;
+
+field:                ID COLON expr 
+                      {
+                        // a:4
+                        // Make Slice struct with start=$3 and range=1, and store in slicesDict
+
+                        Slice slice = Slice{$3, Builder.getInt32(1)};
+                        addSlice(string($1), slice);
+                      }
+                      | ID LBRACKET expr RBRACKET COLON expr 
+                      {
+                        // a[4]:2
+                        // Make new Slice, start = $6, range = $3
+                        Slice slice = {$6, $3};
+                        // Store the value in slices Dictionary
+                        addSlice(string($1), slice);
+                      }
 // 566 only below
-| ID
-;
+                      | ID 
+                      {
+                        // Insert ID into bitsliceFieldIds at first position
+                        bitsliceFieldIds.insert(bitsliceFieldIds.begin(), string($1));
+                        // bitsliceFieldIds.push_back(string($1));
+                      }
+                      ;
 
-expr: bitslice
-| expr PLUS expr
-| expr MINUS expr
-| expr XOR expr
-| expr AND expr
-| expr OR expr
-| INV expr
-| BINV expr
-| expr MUL expr
-| expr DIV expr
-| expr MOD expr
+expr:                 bitslice  { $$ = $1; }
+                      | expr PLUS expr    { $$ = Builder.CreateAdd($1, $3); }
+                      | expr MINUS expr   { $$ = Builder.CreateSub($1, $3); }
+                      | expr XOR expr     { $$ = Builder.CreateXor($1, $3); }
+                      | expr AND expr     { $$ = Builder.CreateAnd($1, $3); }
+                      | expr OR expr      { $$ = Builder.CreateOr($1, $3); }
+                      | INV expr          { $$ = Builder.CreateNot($2); }
+                      | BINV expr 
+                      {
+                        // Flip the LSB, by using XOR operation with 1
+                        Value* one = Builder.getInt32(1);
+                        $$ = Builder.CreateXor($2, one);
+                      }
+                      | expr MUL expr     {$$ = Builder.CreateMul($1, $3);}
+                      | expr DIV expr     {$$ = Builder.CreateSDiv($1, $3);}
+                      | expr MOD expr     {$$ = Builder.CreateSRem($1, $3);}
 /* 566 only */
-| REDUCE AND LPAREN expr RPAREN
-| REDUCE OR LPAREN expr RPAREN
-| REDUCE XOR LPAREN expr RPAREN
-| REDUCE PLUS LPAREN expr RPAREN
-| EXPAND LPAREN expr RPAREN
-;
+                      | REDUCE AND LPAREN expr RPAREN
+                      {
+                        // 111111 -> 1
+                        // 101101 -> 0
+                        // Divide by 111111 all 1s
+                        // Divide expr by 0xFFFFFFFF
+                        $$ = Builder.CreateUDiv($4, Builder.getInt32(0xFFFFFFFF));
+                      }
+                      | REDUCE OR LPAREN expr RPAREN 
+                      {
+                        // OR all the bits
+                        // 11111 -> 1
+                        // 00000 -> 0
+                        // 100000 -> 1
+                        
+                        // If value greater than 1, return 1
 
-bitslice: ID
-| NUMBER
-| bitslice_list
-| LPAREN expr RPAREN
-| bitslice NUMBER
-| bitslice DOT ID
+                        // Check if value is greater than 1
+                        Value* boolean = Builder.CreateICmpUGT($4, Builder.getInt32(0));
+
+                        // Convert boolean to integer
+                        $$ = Builder.CreateZExt(boolean, Builder.getInt32Ty());
+
+                      }
+                      | REDUCE XOR LPAREN expr RPAREN 
+                      {
+                        // 10000 -> 1
+                        // 00000 -> 0
+                        // 11111 -> 1
+                        // 11110 -> 0
+                        // XOR all the bitfields
+                        // Add all the individual bits of expr
+                        
+                        Value* xor_temp = Builder.getInt32(0);
+
+                        for (int i = 0; i < 32; i++)
+                        {
+                          // Get i bit from expr
+                          Value* bit = getBit($4, i);
+                          // Add the bit to xor
+                          xor_temp = Builder.CreateXor(xor_temp, bit);
+                        }
+                        $$ = xor_temp;
+
+                      }
+                      | REDUCE PLUS LPAREN expr RPAREN 
+                      {
+                        // Return LLVM CTPOP instructions
+                        Function* ctpop = M->getFunction("llvm.ctpop.i32");
+                        vector<Type*>ctpop_args;
+                        ctpop_args.push_back(Builder.getInt32Ty());
+                        FunctionType *ctpop_type = FunctionType::get(Builder.getInt32Ty(), ctpop_args, false);
+                        ctpop = llvm::Function::Create(ctpop_type, GlobalValue::ExternalLinkage, "llvm.ctpop.i32", M);
+                        Value* ctpop_call = Builder.CreateCall(ctpop, $4);
+                        $$ = ctpop_call;
+                      }
+                      | EXPAND LPAREN expr RPAREN 
+                      {                        
+                        // get lowest bit of expr
+                        Value* lowest_bit = getLowestBit($3);
+                        
+                        // Make a value of maximum unsigned 32 bits
+                        Value* max_32 = Builder.getInt32(0xFFFFFFFF);
+
+                        // Multiply lowest_bit and max_32, so it fills all the 32 bits
+                        Value* result = Builder.CreateMul(lowest_bit, max_32);
+
+                        $$ = result;
+                      }
+                      ;
+
+bitslice:             ID 
+                      { 
+                        $$ = handleBitsliceID($$, $1);
+                      }
+                      | NUMBER 
+                      {
+                        bitsliceIsID = true;
+                        bitsliceRange = Builder.getInt32(1);
+                        $$ = Builder.getInt32($1);
+                      }
+                      | bitslice_list 
+                      {
+                        $$ = $1;
+                      }
+                      | LPAREN expr RPAREN 
+                      {
+                        bitsliceIsID = false;
+                        bitsliceRange = Builder.getInt32(1);
+                        $$ = $2;
+                      }
+                      | bitslice NUMBER
+                      {
+                        bitsliceIsID = false;
+                        bitsliceRange = Builder.getInt32(1);
+                        $$ = getBit($1,Builder.getInt32($2));
+                      }
+                      | bitslice DOT ID 
+                      {
+                        bitsliceIsID = false;
+                        // From slicesDict, grab value of Slice using key ID
+                        // Check if slicesDict has key ID
+                        if (slicesDict.find(string($3)) != slicesDict.end())
+                        {
+                          Slice slice = slicesDict[string($3)];
+                          bitsliceRange = slice.range;
+                          // Input: slice(start, range), bitslice
+                          $$ = getMaskedValue($1, slice);
+                        }
+                        else { 
+                          printf("Key %s not found in slicesDict\n", string($3).c_str());
+                          yyerror("Slice not found in slicesDict"); }
+                      }
 // 566 only
-| bitslice LBRACKET expr RBRACKET
-| bitslice LBRACKET expr COLON expr RBRACKET
+                      | bitslice LBRACKET expr RBRACKET 
+                      {
+                        bitsliceIsID = false;
+                        bitsliceRange = Builder.getInt32(1);
+                        $$ = getBit($1,$3); 
+                      }
+                      | bitslice LBRACKET expr COLON expr RBRACKET 
+                      {
+                        bitsliceIsID = false;
+
+                        // [4:2], [4:4]
+                        // start = $5 = 2, range = $3-$5+1 = 3 ; start = 4, range = 4-4+1 = 1
+                        // range = $3 - $5 + 1)
+                        Value* range = Builder.CreateAdd(Builder.CreateSub($3, $5), Builder.getInt32(1));
+                        Slice slice = Slice{$3, range};
+                        bitsliceRange = Builder.getInt32(1);;
+                        $$ = getMaskedValue($1, slice);
+                      }
+                      ;
+
+bitslice_list:        LBRACE bitslice_list_helper RBRACE { $$ = $2;}
+                      ;
+
+bitslice_list_helper: bitslice 
+                      {
+                        // Information: bitslice Val* object
+                        // start tracking bitslice
+                        $$ = bitsliceIsID ? getLowestBit($1) : $1;
+                        bitsliceIsID = false;
+                      }
+                      | bitslice_list_helper COMMA bitslice 
+                      {
+                        // TODO: For wide bitslices, use a global variable
+
+                        Value* bslice = bitsliceIsID ? getLowestBit($3) : $3;
+                        bitsliceIsID = false;
+                        $$ = do_leftshiftbyn_add($1,bitsliceRange,bslice);
+                        bitsliceRange = Builder.getInt32(1);
+                      }
 ;
 
-bitslice_list: LBRACE bitslice_list_helper RBRACE
-;
+bitslice_lhs:         ID { $$ = $1; }
+                      | bitslice_lhs NUMBER { 
+                        // a1
+                        // return single masked bit, use getBit
+                        // check if valueSliceDict has key $1
+                        if (valueSliceDict.find(string($1)) != valueSliceDict.end())
+                        {
+                          // Get valueSlice from valueSliceDict
+                          ValueSlice valueSlice = valueSliceDict[string($1)];
+                          // Make and add a slice to the valueSliceDict[$1]
 
-bitslice_list_helper:  bitslice
-| bitslice_list_helper COMMA bitslice
-;
+                          // Initialize a new slice, with start = $2, range = 1
+                          Slice slice = Slice{Builder.getInt32($2), Builder.getInt32(1)};
 
-bitslice_lhs: ID
-| bitslice_lhs NUMBER
-| bitslice_lhs DOT ID
+                          // Add slice to valueSlice
+                          valueSlice.slice = slice;
+                          
+                          $$ = $1;
+                        }
+                        else { yyerror("Slice not found for bitslice_lhs"); }
+                       }
+                      | bitslice_lhs DOT ID 
+                      {
+                        if (slicesDict.find(string($3)) != slicesDict.end())
+                        {
+                          // x = 0; slice five:5
+
+                          // Input: bitslice_lhs: char*, ID: char*
+
+                          // We get values from the char* Dictionaries: ValueSlice, Slice
+                          Slice slice = slicesDict[(string)$3];
+
+                          // Output: Update ValueSlice's slice with new Slice
+                          
+                          ValueSlice valueSlice;
+                          // check if $1 is in ValueSliceDict else throw exception
+                          if (valueSliceDict.find(string($1)) != valueSliceDict.end())
+                          {
+                            valueSlice = valueSliceDict[string($1)];
+                            // existing slice
+                            Slice existingSlice = valueSlice.slice;
+                            
+                            // Slice the slice further
+                            // existingSlice, slice
+                            // Start = existingSlice.start + slice.start
+                            Value* start = Builder.CreateAdd(existingSlice.start, slice.start);                           
+                            Slice newSlice = Slice{start, slice.range};
+                            valueSlice.slice = newSlice;
+                          }
+                          else {
+                             // If not found, create a new value
+                              valueSlice = ValueSlice{Builder.getInt32(0), slice};
+                          }
+
+                          valueSliceDict[string($1)] = valueSlice;
+                        }
+                        else { YYERROR; }
+                        $$ = $1;
+                        
+                      }
 // 566 only
-| bitslice_lhs LBRACKET expr RBRACKET
-| bitslice_lhs LBRACKET expr COLON expr RBRACKET
+                      | bitslice_lhs LBRACKET expr RBRACKET 
+                      {
+                        // a[4]
+                        // Since this is bitslice_lhs, update value of slice in valueSliceDict
+                        // 0. check if valueSliceDict has key $1
+                        if (valueSliceDict.find(string($1)) != valueSliceDict.end())
+                        {
+                          // 1. Get valueSlice from valueSliceDict
+                          ValueSlice valueSlice = valueSliceDict[string($1)];
+                          
+                          // Make and add a slice to the valueSliceDict[$1]
+
+                          // 2. Initialize a new slice, with start = $3, range = 1
+                          Slice slice = Slice{$3, Builder.getInt32(1)};
+
+                          // 3. Add slice to valueSlice
+                          valueSlice.slice = slice;
+                          
+                          // 4. Update valueSliceDict with new slice
+                          valueSliceDict[string($1)] = valueSlice;
+                        }
+                        else { yyerror("Slice not found for bitslice_lhs"); }
+                      }
+                      | bitslice_lhs LBRACKET expr COLON expr RBRACKET 
+                      {
+                        // [4:2], [4:4]
+                        // start = $5 = 2, range = $3-$5+1 = 3 ; start = 4, range = 4-4+1 = 1
+                        // range = $3 - $5 + 1)
+                        Value* range = Builder.CreateAdd(Builder.CreateSub($3, $5), Builder.getInt32(1));
+                        Slice slice = Slice{$3, range};
+
+                        // Update slice in valueSlice dictionary
+                        // 0. check if valueSliceDict has key $1
+                        if (valueSliceDict.find(string($1)) != valueSliceDict.end())
+                        {
+                          // 1. Get valueSlice from valueSliceDict
+                          ValueSlice valueSlice = valueSliceDict[string($1)];
+                          
+                          // 2. Update valueSlice's slice with new Slice
+                          valueSlice.slice = slice;
+                          
+                          // 3. Update valueSliceDict with new slice
+                          valueSliceDict[string($1)] = valueSlice;
+                        }
+                        else { yyerror("Slice not found for bitslice_lhs"); }
+                      }
 ;
 
 %%
