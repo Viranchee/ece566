@@ -497,13 +497,11 @@ expr:                 bitslice  { $$ = $1; }
 
 bitslice:             ID 
                       { 
-                        bitsliceIsID = true;
-                        bitsliceRange = Builder.getInt32(1);
-                        $$ = valueSliceDict[(string)$1].value; 
+                        $$ = handleBitsliceID($$, $1);
                       }
                       | NUMBER 
                       {
-                        bitsliceIsID = false;
+                        bitsliceIsID = true;
                         bitsliceRange = Builder.getInt32(1);
                         $$ = Builder.getInt32($1);
                       }
@@ -555,7 +553,7 @@ bitslice:             ID
                         // range = $3 - $5 + 1)
                         Value* range = Builder.CreateAdd(Builder.CreateSub($3, $5), Builder.getInt32(1));
                         Slice slice = Slice{$3, range};
-                        bitsliceRange = range;
+                        bitsliceRange = Builder.getInt32(1);;
                         $$ = getMaskedValue($1, slice);
                       }
                       ;
