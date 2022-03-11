@@ -24,6 +24,8 @@
 #include "llvm/Support/SourceMgr.h"
 #include "llvm/Analysis/InstructionSimplify.h"
 
+#include "dominance.h"
+
 using namespace llvm;
 
 static void CommonSubexpressionElimination(Module *);
@@ -233,21 +235,34 @@ bool isDead(Instruction &I)
     return false;
 }
 
+
+
 static void CommonSubexpressionElimination(Module *M) {
 
-    // Iterate over all instructions in the module, check if the instruction is dead using isDead(), and remove it
+    // Iterate over all instructions in the module
     for (auto i = M->begin(); i != M->end(); i++) {
         for (auto j = i->begin(); j != i->end(); j++) {
             for (auto k = j->begin(); k != j->end(); k=k) {
-                Instruction &I = *k;
+                Instruction *I = &*k;
                 k++;
 
-                // Dead code elimination
-                if (isDead(I)) {
-                    I.eraseFromParent();
+//                 Dead code elimination
+                if (isDead(*I)) {
+                    I->eraseFromParent();
                     CSEDead++;
+                    break;
                 }
-                
+//                 Simplify instructions
+                auto simplified = SimplifyInstruction(I, M->getDataLayout());
+                if (simplified) {
+                    // dump info of simplified using errs
+                    errs() << "Simplified: " << *simplified << "\n";
+                    I->replaceAllUsesWith(simplified);
+                    I->eraseFromParent();
+                    CSESimplify++;
+                    break;
+                }
+
                 // 
             }
         }
