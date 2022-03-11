@@ -250,7 +250,7 @@ static void CommonSubexpressionElimination(Module *M) {
                 if (isDead(*I)) {
                     I->eraseFromParent();
                     CSEDead++;
-                    break;
+                    continue;
                 }
 //                 Simplify instructions
                 auto simplified = SimplifyInstruction(I, M->getDataLayout());
@@ -260,7 +260,7 @@ static void CommonSubexpressionElimination(Module *M) {
                     I->replaceAllUsesWith(simplified);
                     I->eraseFromParent();
                     CSESimplify++;
-                    break;
+                    continue;
                 }
 
                 // 
