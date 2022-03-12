@@ -164,6 +164,8 @@ static llvm::Statistic CSELdElim = {"", "CSELdElim", "CSE redundant loads"};
 static llvm::Statistic CSEStore2Load = {"", "CSEStore2Load", "CSE forwarded store to load"};
 static llvm::Statistic CSEStElim = {"", "CSEStElim", "CSE redundant stores"};
 
+static llvm::Statistic CSEBasic = {"", "CSEBasic", "CSE Basic "};
+
 
 bool isDead(Instruction &I)
 {
@@ -235,7 +237,25 @@ bool isDead(Instruction &I)
     return false;
 }
 
+// A function signature which returns array of instructions
+std::vector<Instruction*> literalMatches(Instruction *I) {
+    
+    std::vector<Instruction*> matches;
 
+    auto opcode = I->getOpcode();
+    switch (opcode) {
+        case Instruction::Load:
+        case Instruction::Store:
+        case Instruction::VAArg:
+        case Instruction::Call:
+        case Instruction::CallBr:
+        case Instruction::Alloca:
+        case Instruction::FCmp:
+            return matches;
+    }
+
+    return matches;
+}
 
 static void CommonSubexpressionElimination(Module *M) {
 
