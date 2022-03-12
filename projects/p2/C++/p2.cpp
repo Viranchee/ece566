@@ -283,7 +283,18 @@ static void CommonSubexpressionElimination(Module *M) {
                     continue;
                 }
 
-                // 
+                // Basic CSE pass
+                auto matches = literalMatches(I);
+                if (matches.size() > 0) {
+                    for (auto m : matches) {
+                        m->replaceAllUsesWith(I);
+                        m->eraseFromParent();
+                        CSEBasic++;
+                    }
+                }
+                
+
+
             }
         }
     }
