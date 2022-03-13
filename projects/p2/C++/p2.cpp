@@ -260,11 +260,11 @@ std::vector<Instruction*> literalMatches(Instruction *I) {
 static void CommonSubexpressionElimination(Module *M) {
 
     // Iterate over all instructions in the module
-    for (auto i = M->begin(); i != M->end(); i++) {
-        for (auto j = i->begin(); j != i->end(); j++) {
-            for (auto k = j->begin(); k != j->end(); k=k) {
-                Instruction *I = &*k;
-                k++;
+    for (auto funcIter = M->begin(); funcIter != M->end(); funcIter++) {
+        for (auto blockIter = funcIter->begin(); blockIter != funcIter->end(); blockIter++) {
+            for (auto instnIter = blockIter->begin(); instnIter != blockIter->end();) {
+                Instruction *I = &*instnIter;
+                instnIter++;
 
 //                 Dead code elimination
                 if (isDead(*I)) {
