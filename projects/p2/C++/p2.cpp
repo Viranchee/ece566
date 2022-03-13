@@ -237,6 +237,17 @@ bool isDead(Instruction &I)
     return false;
 }
 
+// Find all blocks dominated by I's basic block. Includes current block
+std::vector<LLVMBasicBlockRef> dominatedBlocksByInstruction(Instruction *I) {
+    std::vector<LLVMBasicBlockRef> dominatedBlocks;
+    auto *currentBasicBlock = LLVMBasicBlockRef(I->getParent());
+    dominatedBlocks.push_back(currentBasicBlock);
+    for (auto *domChild = LLVMFirstDomChild(currentBasicBlock); domChild != NULL; domChild = LLVMNextDomChild(currentBasicBlock, domChild)) {
+        dominatedBlocks.push_back(domChild);
+    }
+    return dominatedBlocks;
+}
+
 // A function signature which returns array of instructions
 std::vector<Instruction*> literalMatches(Instruction *I) {
     
