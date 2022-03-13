@@ -266,13 +266,13 @@ static void CommonSubexpressionElimination(Module *M) {
                 Instruction *I = &*instnIter;
                 instnIter++;
 
-//                 Dead code elimination
+                // Dead code elimination
                 if (isDead(*I)) {
                     I->eraseFromParent();
                     CSEDead++;
                     continue;
                 }
-//                 Simplify instructions
+                // Simplify instructions
                 auto simplified = SimplifyInstruction(I, M->getDataLayout());
                 if (simplified) {
                     // dump info of simplified using errs
@@ -286,9 +286,9 @@ static void CommonSubexpressionElimination(Module *M) {
                 // Basic CSE pass
                 auto matches = literalMatches(I);
                 if (matches.size() > 0) {
-                    for (auto m : matches) {
-                        m->replaceAllUsesWith(I);
-                        m->eraseFromParent();
+                    for (auto match : matches) {
+                        match->replaceAllUsesWith(I);
+                        match->eraseFromParent();
                         CSEBasic++;
                     }
                 }
