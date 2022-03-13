@@ -248,11 +248,19 @@ std::vector<LLVMBasicBlockRef> dominatedBlocksByInstruction(Instruction *I) {
     return dominatedBlocks;
 }
 
+bool isLiteralMatch(Instruction* i1, Instruction* i2) {
+    // Defensive checks: Match Opcode, Type, #Operands, and operand order and then return true
+    if (i1->getOpcode() != i2->getOpcode()) { return false; }
+    if (i1->getType() != i2->getType()) { return false; }
+    if (i1->getNumOperands() != i2->getNumOperands()) { return false; }
+    for (int i = 0; i < i1->getNumOperands(); i++) {
+        if (i1->getOperand(i) != i2->getOperand(i)) { return false; }
+    }
+    return true;
+}
+
 // A function signature which returns array of instructions
-std::vector<Instruction*> literalMatches(Instruction *I) {
-    
-    std::vector<Instruction*> matches;
-    
+void eliminateCommonSubexpressionsFor(Instruction *I) {
     // Early exit
     auto opcode = I->getOpcode();
     switch (opcode) {
@@ -263,10 +271,37 @@ std::vector<Instruction*> literalMatches(Instruction *I) {
         case Instruction::CallBr:
         case Instruction::Alloca:
         case Instruction::FCmp:
-            return matches;
+            return;
     }
 
-    return matches;
+    auto dominatedBlocks = dominatedBlocksByInstruction(I);
+
+    // go to all the instructions who are dominated by the instruction I
+    // For all dominated instructions
+    for (auto block : dominatedBlocks) {
+        // convert LLVMOpaqueBasicBlock block to type BasicBlock
+        auto *basicBlock = dyn_cast<BasicBlock>(block);
+        // auto *bBlock = cast<BasicBlock>(block);
+        if (basicBlock == nullptr) {
+            
+            continue;
+        }
+        // loop over all instructions in the block
+        for (auto instnIter = basicBlock->begin(); instnIter != basicBlock->end();) {
+            auto *instn = &*instnIter;
+            instnIter++;
+            // if the instruction is not the same as I
+            if (instn != I) {
+                // and if the instruction is a literal match
+                if (isLiteralMatch(I, instn)) {
+                    instn->replaceAllUsesWith(I);
+                    instn->eraseFromParent();
+                    CSEBasic++;
+                    
+                }
+            }
+        }
+    }
 }
 
 static void CommonSubexpressionElimination(Module *M) {
@@ -294,19 +329,9 @@ static void CommonSubexpressionElimination(Module *M) {
                     CSESimplify++;
                     continue;
                 }
-
                 // Basic CSE pass
-                auto matches = literalMatches(I);
-                if (matches.size() > 0) {
-                    for (auto match : matches) {
-                        match->replaceAllUsesWith(I);
-                        match->eraseFromParent();
-                        CSEBasic++;
-                    }
-                }
+                eliminateCommonSubexpressionsFor(I);
                 
-
-
             }
         }
     }
