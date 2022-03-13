@@ -241,7 +241,8 @@ bool isDead(Instruction &I)
 std::vector<Instruction*> literalMatches(Instruction *I) {
     
     std::vector<Instruction*> matches;
-
+    
+    // Early exit
     auto opcode = I->getOpcode();
     switch (opcode) {
         case Instruction::Load:
