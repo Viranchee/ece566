@@ -236,17 +236,6 @@ bool isDead(Instruction &I)
     return false;
 }
 
-// Find all blocks dominated by I's basic block. Includes current block
-std::vector<LLVMBasicBlockRef> dominatedBlocksByInstruction(Instruction *I) {
-    std::vector<LLVMBasicBlockRef> dominatedBlocks;
-    auto *currentBasicBlock = LLVMBasicBlockRef(I->getParent());
-    dominatedBlocks.push_back(currentBasicBlock);
-    for (auto *domChild = LLVMFirstDomChild(currentBasicBlock); domChild != NULL; domChild = LLVMNextDomChild(currentBasicBlock, domChild)) {
-        dominatedBlocks.push_back(domChild);
-    }
-    return dominatedBlocks;
-}
-
 bool isLiteralMatch(Instruction* i1, Instruction* i2) {
     // Defensive checks: Match Opcode, Type, #Operands, and operand order and then return true
     if (i1->getOpcode() != i2->getOpcode()) { return false; }
