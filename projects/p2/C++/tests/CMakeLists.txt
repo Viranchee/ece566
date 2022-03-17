@@ -5,11 +5,11 @@ function(p2_test_nocse name class)
             DEPENDS p2 ${CMAKE_CURRENT_SOURCE_DIR}/${name}.ll
             )
     add_custom_target(${name}-nocse.ll ALL
-            llvm-dis-13 ${name}-nocse.bc
+            llvm-dis ${name}-nocse.bc
             WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
             DEPENDS p2 ${name}-nocse.bc
             )
-    add_test(NAME Fail-${class}-${name} COMMAND FileCheck-13 --input-file=${CMAKE_CURRENT_BINARY_DIR}/${name}-nocse.ll ${CMAKE_CURRENT_SOURCE_DIR}/${name}.ll )
+    add_test(NAME Fail-${class}-${name} COMMAND FileCheck --input-file=${CMAKE_CURRENT_BINARY_DIR}/${name}-nocse.ll ${CMAKE_CURRENT_SOURCE_DIR}/${name}.ll )
     set_tests_properties(Fail-${class}-${name} PROPERTIES WILL_FAIL TRUE)
 endfunction(p2_test_nocse)
 
@@ -20,11 +20,11 @@ function(p2_test name class)
             DEPENDS p2 ${CMAKE_CURRENT_SOURCE_DIR}/${name}.ll
     )
     add_custom_target(${name}-out.ll ALL
-            llvm-dis-13 ${name}-out.bc
+            llvm-dis ${name}-out.bc
             WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
             DEPENDS p2 ${name}-out.bc
     )
-    add_test(NAME ${class}-${name} COMMAND FileCheck-13 --input-file=${CMAKE_CURRENT_BINARY_DIR}/${name}-out.ll ${CMAKE_CURRENT_SOURCE_DIR}/${name}.ll )
+    add_test(NAME ${class}-${name} COMMAND FileCheck --input-file=${CMAKE_CURRENT_BINARY_DIR}/${name}-out.ll ${CMAKE_CURRENT_SOURCE_DIR}/${name}.ll )
 endfunction(p2_test)
 
 p2_test(cse0 CSEDead)
