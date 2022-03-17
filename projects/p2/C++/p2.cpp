@@ -170,6 +170,8 @@ bool isDead(Instruction &I);
 bool isLiteralMatch(Instruction* i1, Instruction* i2);
 bool shouldCSEworkOnInstruction(Instruction* I);
 void basicCSEPass(Instruction *I);
+void eliminateRedundantLoads(Instruction *I);
+void eliminateRedundantStores(Instruction *I);
 
 static void CommonSubexpressionElimination(Module *M) {
 
@@ -197,13 +199,17 @@ static void CommonSubexpressionElimination(Module *M) {
                 // Optimization 1: Common Subexpression Elimination
                 {
                     basicCSEPass(I);
-                    
                 }
-                // basicCSEPass(I, &*blockIter, &*funcIter, M);
 
                 // Optimization 2: Eliminate Redundant Loads
+                {
+                    eliminateRedundantLoads(I);
+                }
                 
                 // Optimization 3: Eliminate Redundant Stores
+                {
+                    eliminateRedundantStores(I);
+                }
 
                 if (instIter == tempIter) {
                     instIter++;
@@ -353,4 +359,11 @@ void basicCSEPass(Instruction *I) {
 
     // Remove common instructions in the same function, next block
     removeCommonInstInDominatedBlocks(I);
+}
+
+void eliminateRedundantLoads(Instruction *I) {
+
+}
+void eliminateRedundantStores(Instruction *I) {
+
 }
