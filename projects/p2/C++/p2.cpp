@@ -348,15 +348,13 @@ void removeCommonInstInDominatedBlocks(Instruction *I) {
 // Function which takes Instruction and returns a string
 void basicCSEPass(Instruction *I) {
   // Defensive checks, Early exit
-  if (!shouldCSEworkOnInstruction(I)) {
-    return;
+  if (shouldCSEworkOnInstruction(I)) {
+    // Remove common instructions in the same basic block
+    removeCommonInstructionsInCurrentBlock(I);
+
+    // Remove common instructions in the same function, next block
+    removeCommonInstInDominatedBlocks(I);
   }
-
-  // Remove common instructions in the same basic block
-  removeCommonInstructionsInCurrentBlock(I);
-
-  // Remove common instructions in the same function, next block
-  removeCommonInstInDominatedBlocks(I);
 }
 
 void eliminateRedundantLoads(Instruction *I) {}
