@@ -243,11 +243,8 @@ bool isLiteralMatch(Instruction* i1, Instruction* i2) {
 }
 
 bool isDead(Instruction &I) {
-    /*
-        Check necessary requirements, otherwise return false
-     */
-    if ( I.use_begin() == I.use_end() )
-    {
+    // Check necessary requirements, otherwise return false
+    if (I.use_begin() == I.use_end()) {
         int opcode = I.getOpcode();
         switch(opcode){
             case Instruction::Add:
@@ -342,16 +339,7 @@ void removeCommonInstInDominatedBlocks(Instruction *I) {
     for(it=Node->begin(),end=Node->end(); it!=end; it++) {
         BasicBlock *bb_next = (*it)->getBlock(); // get each bb it immediately adominates
         // Iterate over all instructions in bb_next
-        for (auto instIter = bb_next->begin(); instIter != bb_next->end();) {
-            Instruction *I_next = &*instIter;
-            instIter++;
-            
-            if (isLiteralMatch(I, I_next)) {
-                I_next->replaceAllUsesWith(I);
-                I_next->eraseFromParent();
-                CSEBasic++;
-            }
-        }
+        removeCommonInstructionsIn(bb_next, I);
     }
 }
 
