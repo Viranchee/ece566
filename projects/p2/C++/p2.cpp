@@ -165,9 +165,11 @@ static llvm::Statistic CSEStElim = {"", "CSEStElim", "CSE redundant stores"};
 
 static llvm::Statistic CSEBasic = {"", "CSEBasic", "CSE Basic "};
 
+// Function Signatures
 bool isDead(Instruction &I);
 bool isLiteralMatch(Instruction* i1, Instruction* i2);
 bool shouldCSEworkOnInstruction(Instruction* I);
+void basicCSEPass(Instruction *I);
 
 static void CommonSubexpressionElimination(Module *M) {
 
@@ -183,22 +185,22 @@ static void CommonSubexpressionElimination(Module *M) {
                     I->eraseFromParent();
                     CSEDead++;
                     continue;
-                } else if (auto simplified = SimplifyInstruction(I, M->getDataLayout())) {
+                } 
+                if (auto simplified = SimplifyInstruction(I, M->getDataLayout())) {
                     instIter++;
-                    // dump info of simplified using errs
-                    errs() << "Simplified: " << *simplified << "\n";
                     I->replaceAllUsesWith(simplified);
                     I->eraseFromParent();
                     CSESimplify++;
                     continue;
-                } 
+                }
                 
                 // Optimization 1: Common Subexpression Elimination
-                
+                {
+                    basicCSEPass(I);
+                    
+                }
                 // basicCSEPass(I, &*blockIter, &*funcIter, M);
 
-
-                // errs() << "End" << "\n";
                 // Optimization 2: Eliminate Redundant Loads
                 
                 // Optimization 3: Eliminate Redundant Stores
@@ -308,3 +310,59 @@ bool isDead(Instruction &I) {
     return false;
 }
 
+
+void removeCommonInstructionsIn(BasicBlock *bb, Instruction *I) {
+    for (auto instIter = bb->begin(); instIter != bb->end();) {
+        Instruction *nextInstruction = &*instIter;
+        instIter++;
+        if (I != nextInstruction && isLiteralMatch(I, nextInstruction)) {
+            nextInstruction->replaceAllUsesWith(I);
+            nextInstruction->eraseFromParent();
+            CSEBasic++;
+        }
+    }
+}
+
+void removeCommonInstructionsInCurrentBlock(Instruction *I) {
+    removeCommonInstructionsIn(I->getParent(), I);
+}
+
+DomTreeNodeBase<BasicBlock>* getDomTree(Instruction *I) {
+    auto bb = I->getParent();
+    auto F = bb->getParent();
+    DominatorTreeBase<BasicBlock,false> *DT= new DominatorTreeBase<BasicBlock,false>();
+    DT->recalculate(*F); // F is Function*. Use one DominatorTreeBase and recalculate tree for each function you visit
+    DomTreeNodeBase<BasicBlock> *Node = DT->getNode(bb); // get Node from some basic block*
+    return Node;
+}
+
+void removeCommonInstInDominatedBlocks(Instruction *I) {
+    auto *Node = getDomTree(I);
+    DomTreeNodeBase<BasicBlock>::iterator it,end;
+    for(it=Node->begin(),end=Node->end(); it!=end; it++) {
+        BasicBlock *bb_next = (*it)->getBlock(); // get each bb it immediately adominates
+        // Iterate over all instructions in bb_next
+        for (auto instIter = bb_next->begin(); instIter != bb_next->end();) {
+            Instruction *I_next = &*instIter;
+            instIter++;
+            
+            if (isLiteralMatch(I, I_next)) {
+                I_next->replaceAllUsesWith(I);
+                I_next->eraseFromParent();
+                CSEBasic++;
+            }
+        }
+    }
+}
+
+// Function which takes Instruction and returns a string
+void basicCSEPass(Instruction *I) {
+    // Defensive checks, Early exit
+    if (!shouldCSEworkOnInstruction(I)) { return; }
+
+    // Remove common instructions in the same basic block
+    removeCommonInstructionsInCurrentBlock(I);
+
+    // Remove common instructions in the same function, next block
+    removeCommonInstInDominatedBlocks(I);
+}
