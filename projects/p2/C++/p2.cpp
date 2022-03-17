@@ -23,6 +23,7 @@
 #include "llvm/Support/ManagedStatic.h"
 #include "llvm/Support/SourceMgr.h"
 #include "llvm/Analysis/InstructionSimplify.h"
+#include "llvm/Analysis/LoopInfo.h"
 
 using namespace llvm;
 
@@ -164,5 +165,76 @@ static llvm::Statistic CSEStElim = {"", "CSEStElim", "CSE redundant stores"};
 
 static void CommonSubexpressionElimination(Module *) {
     // Implement this function
+
+bool isDead(Instruction &I)
+{
+    /*
+        Check necessary requirements, otherwise return false
+     */
+    if ( I.use_begin() == I.use_end() )
+    {
+        int opcode = I.getOpcode();
+        switch(opcode){
+            case Instruction::Add:
+            case Instruction::FNeg:
+            case Instruction::FAdd:
+            case Instruction::Sub:
+            case Instruction::FSub:
+            case Instruction::Mul:
+            case Instruction::FMul:
+            case Instruction::UDiv:
+            case Instruction::SDiv:
+            case Instruction::FDiv:
+            case Instruction::URem:
+            case Instruction::SRem:
+            case Instruction::FRem:
+            case Instruction::Shl:
+            case Instruction::LShr:
+            case Instruction::AShr:
+            case Instruction::And:
+            case Instruction::Or:
+            case Instruction::Xor:
+            case Instruction::Alloca:
+            case Instruction::GetElementPtr:
+            case Instruction::Trunc:
+            case Instruction::ZExt:
+            case Instruction::SExt:
+            case Instruction::FPToUI:
+            case Instruction::FPToSI:
+            case Instruction::UIToFP:
+            case Instruction::SIToFP:
+            case Instruction::FPTrunc:
+            case Instruction::FPExt:
+            case Instruction::PtrToInt:
+            case Instruction::IntToPtr:
+            case Instruction::BitCast:
+            case Instruction::AddrSpaceCast:
+            case Instruction::ICmp:
+            case Instruction::FCmp:
+            case Instruction::PHI:
+            case Instruction::Select:
+            case Instruction::ExtractElement:
+            case Instruction::InsertElement:
+            case Instruction::ShuffleVector:
+            case Instruction::ExtractValue:
+            case Instruction::InsertValue:
+                return true; // dead, but this is not enough
+
+            case Instruction::Load:
+            {
+                auto *li = dyn_cast<LoadInst>(&I);
+                if (li && li->isVolatile())
+                    return false;
+                return true;
+            }
+            default:
+                // any other opcode fails
+                return false;
+        }
+    }
+
+    return false;
+}
+
 }
 
