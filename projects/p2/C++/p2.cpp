@@ -238,3 +238,39 @@ bool isDead(Instruction &I)
 
 }
 
+static void CommonSubexpressionElimination(Module *M) {
+
+    // Iterate over all instructions in the module
+    for (auto funcIter = M->begin(); funcIter != M->end(); funcIter++) {
+        for (auto blockIter = funcIter->begin(); blockIter != funcIter->end(); blockIter++) {
+            for (auto instIter = blockIter->begin(); instIter != blockIter->end();) {
+                Instruction *I = &*instIter;
+                
+                // Dead code elimination
+                if (isDead(*I)) {
+                    instIter++;    
+                    I->eraseFromParent();
+                    CSEDead++;
+                    continue;
+                } else if (auto simplified = SimplifyInstruction(I, M->getDataLayout())) {
+                    instIter++;
+                    // dump info of simplified using errs
+                    errs() << "Simplified: " << *simplified << "\n";
+                    I->replaceAllUsesWith(simplified);
+                    I->eraseFromParent();
+                    CSESimplify++;
+                    continue;
+                }
+                // Optimization 1: Common Subexpression Elimination
+                
+                // basicCSEPass(I, &*blockIter, &*funcIter, M);
+
+
+                // errs() << "End" << "\n";
+                // Optimization 2: Eliminate Redundant Loads
+                
+                // Optimization 3: Eliminate Redundant Stores
+            }
+        }
+    }
+}
