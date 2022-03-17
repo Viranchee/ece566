@@ -163,11 +163,84 @@ static llvm::Statistic CSELdElim = {"", "CSELdElim", "CSE redundant loads"};
 static llvm::Statistic CSEStore2Load = {"", "CSEStore2Load", "CSE forwarded store to load"};
 static llvm::Statistic CSEStElim = {"", "CSEStElim", "CSE redundant stores"};
 
-static void CommonSubexpressionElimination(Module *) {
-    // Implement this function
+static llvm::Statistic CSEBasic = {"", "CSEBasic", "CSE Basic "};
 
-bool isDead(Instruction &I)
-{
+bool isDead(Instruction &I);
+bool isLiteralMatch(Instruction* i1, Instruction* i2);
+bool shouldCSEworkOnInstruction(Instruction* I);
+
+static void CommonSubexpressionElimination(Module *M) {
+
+    // Iterate over all instructions in the module
+    for (auto funcIter = M->begin(); funcIter != M->end(); funcIter++) {
+        for (auto blockIter = funcIter->begin(); blockIter != funcIter->end(); blockIter++) {
+            for (auto instIter = blockIter->begin(); instIter != blockIter->end();) {
+                Instruction *I = &*instIter;
+                auto tempIter = instIter;
+                // Dead code elimination
+                if (isDead(*I)) {
+                    instIter++;    
+                    I->eraseFromParent();
+                    CSEDead++;
+                    continue;
+                } else if (auto simplified = SimplifyInstruction(I, M->getDataLayout())) {
+                    instIter++;
+                    // dump info of simplified using errs
+                    errs() << "Simplified: " << *simplified << "\n";
+                    I->replaceAllUsesWith(simplified);
+                    I->eraseFromParent();
+                    CSESimplify++;
+                    continue;
+                } 
+                
+                // Optimization 1: Common Subexpression Elimination
+                
+                // basicCSEPass(I, &*blockIter, &*funcIter, M);
+
+
+                // errs() << "End" << "\n";
+                // Optimization 2: Eliminate Redundant Loads
+                
+                // Optimization 3: Eliminate Redundant Stores
+
+                if (instIter == tempIter) {
+                    instIter++;
+                }
+            }
+        }
+    }
+}
+
+// Implementation
+
+bool shouldCSEworkOnInstruction(Instruction* I) {
+        // Early exit
+    auto opcode = I->getOpcode();
+    switch (opcode) {
+        case Instruction::Load:
+        case Instruction::Store:
+        case Instruction::VAArg:
+        case Instruction::Call:
+        case Instruction::CallBr:
+        case Instruction::Alloca:
+        case Instruction::FCmp:
+            return false;
+    }
+    return true;
+}
+
+bool isLiteralMatch(Instruction* i1, Instruction* i2) {
+    // Defensive checks: Match Opcode, Type, #Operands, and operand order and then return true
+    if (i1->getOpcode() != i2->getOpcode()) { return false; }
+    if (i1->getType() != i2->getType()) { return false; }
+    if (i1->getNumOperands() != i2->getNumOperands()) { return false; }
+    for (int i = 0; i < i1->getNumOperands(); i++) {
+        if (i1->getOperand(i) != i2->getOperand(i)) { return false; }
+    }
+    return true;
+}
+
+bool isDead(Instruction &I) {
     /*
         Check necessary requirements, otherwise return false
      */
@@ -232,45 +305,6 @@ bool isDead(Instruction &I)
                 return false;
         }
     }
-
     return false;
 }
 
-}
-
-static void CommonSubexpressionElimination(Module *M) {
-
-    // Iterate over all instructions in the module
-    for (auto funcIter = M->begin(); funcIter != M->end(); funcIter++) {
-        for (auto blockIter = funcIter->begin(); blockIter != funcIter->end(); blockIter++) {
-            for (auto instIter = blockIter->begin(); instIter != blockIter->end();) {
-                Instruction *I = &*instIter;
-                
-                // Dead code elimination
-                if (isDead(*I)) {
-                    instIter++;    
-                    I->eraseFromParent();
-                    CSEDead++;
-                    continue;
-                } else if (auto simplified = SimplifyInstruction(I, M->getDataLayout())) {
-                    instIter++;
-                    // dump info of simplified using errs
-                    errs() << "Simplified: " << *simplified << "\n";
-                    I->replaceAllUsesWith(simplified);
-                    I->eraseFromParent();
-                    CSESimplify++;
-                    continue;
-                }
-                // Optimization 1: Common Subexpression Elimination
-                
-                // basicCSEPass(I, &*blockIter, &*funcIter, M);
-
-
-                // errs() << "End" << "\n";
-                // Optimization 2: Eliminate Redundant Loads
-                
-                // Optimization 3: Eliminate Redundant Stores
-            }
-        }
-    }
-}
