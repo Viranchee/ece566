@@ -228,19 +228,14 @@ bool shouldCSEworkOnInstruction(Instruction *I) {
 }
 
 bool isLiteralMatch(Instruction *i1, Instruction *i2) {
-  // Defensive checks: Match Opcode, Type, #Operands, and operand order and then
-  // return true
-  if (i1->getOpcode() != i2->getOpcode()) {
-    return false;
-  }
-  if (i1->getType() != i2->getType()) {
-    return false;
-  }
-  if (i1->getNumOperands() != i2->getNumOperands()) {
+  // Defensive checks: Match Opcode, Type, #Operands, and operand order
+  if (!((i1->getOpcode() == i2->getOpcode()) &&
+        (i1->getType() == i2->getType()) &&
+        (i1->getNumOperands() == i2->getNumOperands()))) {
     return false;
   }
   for (int i = 0; i < i1->getNumOperands(); i++) {
-    if (i1->getOperand(i) != i2->getOperand(i)) {
+    if (!(i1->getOperand(i) == i2->getOperand(i))) {
       return false;
     }
   }
