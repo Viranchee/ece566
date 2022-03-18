@@ -160,6 +160,7 @@ static llvm::Statistic CSEStElim = {"", "CSEStElim", "CSE redundant stores"};
 
 static llvm::Statistic CSEBasic = {"", "CSEBasic", "CSE Basic "};
 static llvm::Statistic CSE_Rload = {"", "CSE_Rload", "CSE_Rload "};
+static llvm::Statistic CSE_RStore = {"", "CSE_RStore", "CSE_RStore "};
 
 // Function Signatures
 bool isDead(Instruction &I);
