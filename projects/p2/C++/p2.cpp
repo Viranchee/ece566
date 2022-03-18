@@ -328,8 +328,8 @@ void removeCommonInstructionsInCurrentBlock(Instruction *I) {
 }
 
 DomTreeNodeBase<BasicBlock> *getDomTree(Instruction *I) {
-  auto bb = I->getParent();
-  auto F = bb->getParent();
+  auto *bb = I->getParent();
+  auto *F = bb->getParent();
   DominatorTreeBase<BasicBlock, false> *DT =
       new DominatorTreeBase<BasicBlock, false>();
   DT->recalculate(*F); // F is Function*. Use one DominatorTreeBase and
