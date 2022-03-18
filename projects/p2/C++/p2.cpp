@@ -389,4 +389,48 @@ void eliminateRedundantLoads(BasicBlock::iterator &inputIterator) {
   }
 }
 
-void eliminateRedundantStores(BasicBlock::iterator &iterator) {}
+void eliminateRedundantStores(BasicBlock::iterator &iterator) {
+  Instruction *S = &*iterator;
+  if (!(S->getOpcode() == Instruction::Store)) {
+    return;
+  }
+  BasicBlock *bb = iterator->getParent();
+  auto copyIterator = iterator;
+  copyIterator++;
+  bb->print(errs(), NULL);
+
+  // Iterate over copyIterator
+  for (auto _iter = copyIterator; _iter != bb->end();) {
+    Instruction *R = &*_iter;
+    _iter++;
+
+    switch (R->getOpcode()) {
+    case Instruction::Load: {
+      if (R->isVolatile()) {
+        continue;
+        ;
+      }
+      // Load address of R is same as S
+      if (R->getOperand(0) == S->getOperand(1)) {
+        // errs() << __LINE__ << " REPLACING " << *R << " WITH "
+        //  << *S->getOperand(0) << "\n";
+        R->replaceAllUsesWith(S->getOperand(0));
+        R->eraseFromParent();
+        CSEStore2Load++;
+      }
+    } break;
+
+    case Instruction::Store: {
+      // R is not volatile
+      if (!(R->isVolatile())) {
+        continue;
+        ;
+      }
+      // R is store to same address as S
+
+      break;
+    }
+    }
+  }
+}
+
