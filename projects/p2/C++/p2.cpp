@@ -197,10 +197,16 @@ static void CommonSubexpressionElimination(Module *M) {
         { basicCSEPass(I); }
 
         // Optimization 2: Eliminate Redundant Loads
-        { eliminateRedundantLoads(instIter); }
+        {
+          auto copyIterator = instIter;
+          eliminateRedundantLoads(copyIterator);
+        }
 
         // Optimization 3: Eliminate Redundant Stores
-        { eliminateRedundantStores(instIter); }
+        {
+          auto copyIterator = instIter;
+          eliminateRedundantStores(copyIterator);
+        }
 
         if (instIter == tempIter) {
           instIter++;
