@@ -215,6 +215,9 @@ static void CommonSubexpressionElimination(Module *M) {
 
 bool shouldCSEworkOnInstruction(Instruction *I) {
   // Early exit
+  if (I->isTerminator()) {
+    return false;
+  }
   auto opcode = I->getOpcode();
   switch (opcode) {
   case Instruction::Load:
