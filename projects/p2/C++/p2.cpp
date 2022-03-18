@@ -159,14 +159,15 @@ static llvm::Statistic CSEStore2Load = {"", "CSEStore2Load",
 static llvm::Statistic CSEStElim = {"", "CSEStElim", "CSE redundant stores"};
 
 static llvm::Statistic CSEBasic = {"", "CSEBasic", "CSE Basic "};
+static llvm::Statistic CSE_Rload = {"", "CSE_Rload", "CSE_Rload "};
 
 // Function Signatures
 bool isDead(Instruction &I);
 bool isLiteralMatch(Instruction *i1, Instruction *i2);
 bool shouldCSEworkOnInstruction(Instruction *I);
 void basicCSEPass(Instruction *I);
-void eliminateRedundantLoads(Instruction *I);
-void eliminateRedundantStores(Instruction *I);
+void eliminateRedundantLoads(BasicBlock::iterator &iterator);
+void eliminateRedundantStores(BasicBlock::iterator &iterator);
 
 static void CommonSubexpressionElimination(Module *M) {
 
@@ -196,10 +197,10 @@ static void CommonSubexpressionElimination(Module *M) {
         { basicCSEPass(I); }
 
         // Optimization 2: Eliminate Redundant Loads
-        { eliminateRedundantLoads(I); }
+        { eliminateRedundantLoads(instIter); }
 
         // Optimization 3: Eliminate Redundant Stores
-        { eliminateRedundantStores(I); }
+        { eliminateRedundantStores(instIter); }
 
         if (instIter == tempIter) {
           instIter++;
@@ -357,5 +358,33 @@ void basicCSEPass(Instruction *I) {
   }
 }
 
-void eliminateRedundantLoads(Instruction *I) {}
-void eliminateRedundantStores(Instruction *I) {}
+void eliminateRedundantLoads(BasicBlock::iterator &inputIterator) {
+  // Single Basic Block
+  // If instruction is load
+  Instruction *currentInst = &*inputIterator;
+  if (!(currentInst->getOpcode() == Instruction::Load)
+      // && !currentInst->isVolatile()
+  ) {
+    return;
+  }
+
+  auto *bb = inputIterator->getParent();
+  auto tempIterator = inputIterator;
+  tempIterator++;
+  for (auto iterator = tempIterator; iterator != bb->end();) {
+    Instruction *nextInst = &*iterator;
+    iterator++;
+    // Print nextInst
+    if (nextInst->getOpcode() == Instruction::Load && !nextInst->isVolatile() &&
+        currentInst->getType() == nextInst->getType() &&
+        currentInst->getOperand(0) == nextInst->getOperand(0)) {
+      errs() << "Found a redundant load\n";
+      errs() << "Replace " << *nextInst << " _WITH_ " << *currentInst << "\n";
+      nextInst->replaceAllUsesWith(currentInst);
+      nextInst->eraseFromParent();
+      CSE_Rload++;
+    }
+  }
+}
+
+void eliminateRedundantStores(BasicBlock::iterator &iterator) {}
