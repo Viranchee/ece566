@@ -382,8 +382,6 @@ void eliminateRedundantLoads(BasicBlock::iterator &inputIterator) {
     if (nextInst->getOpcode() == Instruction::Load && !nextInst->isVolatile() &&
         currentInst->getType() == nextInst->getType() &&
         currentInst->getOperand(0) == nextInst->getOperand(0)) {
-      errs() << "Found a redundant load\n";
-      errs() << "Replace " << *nextInst << " _WITH_ " << *currentInst << "\n";
       nextInst->replaceAllUsesWith(currentInst);
       nextInst->eraseFromParent();
       CSE_Rload++;
