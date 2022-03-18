@@ -164,8 +164,7 @@ static llvm::Statistic CSE_RStore = {"", "CSE_RStore", "CSE_RStore "};
 
 // Function Signatures
 bool isDead(Instruction &I);
-bool isLiteralMatch(Instruction *i1, Instruction *i2);
-bool shouldCSEworkOnInstruction(Instruction *I);
+
 void basicCSEPass(Instruction *I);
 void eliminateRedundantLoads(BasicBlock::iterator &iterator);
 void eliminateRedundantStores(BasicBlock::iterator &iterator);
