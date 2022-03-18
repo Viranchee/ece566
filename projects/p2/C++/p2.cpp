@@ -164,10 +164,9 @@ static llvm::Statistic CSE_RStore = {"", "CSE_RStore", "CSE_RStore "};
 
 // Function Signatures
 bool isDead(Instruction &I);
-
-void basicCSEPass(Instruction *I);
-void eliminateRedundantLoads(BasicBlock::iterator &iterator);
-void eliminateRedundantStores(BasicBlock::iterator &iterator);
+int basicCSEPass(Instruction *I);
+int eliminateRedundantLoads(BasicBlock::iterator &iterator);
+int eliminateRedundantStores(BasicBlock::iterator &iterator);
 
 static void CommonSubexpressionElimination(Module *M) {
 
@@ -181,12 +180,14 @@ static void CommonSubexpressionElimination(Module *M) {
         // Dead code elimination
         if (isDead(*I)) {
           instIter++;
+          errs() << "Dead Instruction: " << *I << "\n";
           I->eraseFromParent();
           CSEDead++;
           continue;
         }
         if (auto simplified = SimplifyInstruction(I, M->getDataLayout())) {
           instIter++;
+          errs() << "Simplified Instruction: " << *I << "\n";
           I->replaceAllUsesWith(simplified);
           I->eraseFromParent();
           CSESimplify++;
@@ -203,10 +204,7 @@ static void CommonSubexpressionElimination(Module *M) {
         }
 
         // Optimization 3: Eliminate Redundant Stores
-        {
-          auto copyIterator = instIter;
-          eliminateRedundantStores(copyIterator);
-        }
+        { eliminateRedundantStores(instIter); }
 
         if (instIter == tempIter) {
           instIter++;
@@ -276,7 +274,7 @@ bool isDead(Instruction &I) {
     case Instruction::And:
     case Instruction::Or:
     case Instruction::Xor:
-    case Instruction::Alloca:
+    // case Instruction::Alloca:
     case Instruction::GetElementPtr:
     case Instruction::Trunc:
     case Instruction::ZExt:
@@ -316,7 +314,8 @@ bool isDead(Instruction &I) {
   return false;
 }
 
-void removeCommonInstructionsIn(BasicBlock *bb, Instruction *I) {
+int removeCommonInstructionsIn(BasicBlock *bb, Instruction *I) {
+  int instructionsRemoved = 0;
   for (auto instIter = bb->begin(); instIter != bb->end();) {
     Instruction *nextInstruction = &*instIter;
     instIter++;
@@ -324,12 +323,14 @@ void removeCommonInstructionsIn(BasicBlock *bb, Instruction *I) {
       nextInstruction->replaceAllUsesWith(I);
       nextInstruction->eraseFromParent();
       CSEBasic++;
+      instructionsRemoved++;
     }
   }
+  return instructionsRemoved;
 }
 
-void removeCommonInstructionsInCurrentBlock(Instruction *I) {
-  removeCommonInstructionsIn(I->getParent(), I);
+int removeCommonInstructionsInCurrentBlock(Instruction *I) {
+  return removeCommonInstructionsIn(I->getParent(), I);
 }
 
 DomTreeNodeBase<BasicBlock> *getDomTree(Instruction *I) {
@@ -344,43 +345,47 @@ DomTreeNodeBase<BasicBlock> *getDomTree(Instruction *I) {
   return Node;
 }
 
-void removeCommonInstInDominatedBlocks(Instruction *I) {
+int removeCommonInstInDominatedBlocks(Instruction *I) {
+  int instructionsRemoved = 0;
   auto *Node = getDomTree(I);
   DomTreeNodeBase<BasicBlock>::iterator it, end;
   for (it = Node->begin(), end = Node->end(); it != end; it++) {
     BasicBlock *bb_next =
         (*it)->getBlock(); // get each bb it immediately adominates
     // Iterate over all instructions in bb_next
-    removeCommonInstructionsIn(bb_next, I);
+    instructionsRemoved += removeCommonInstructionsIn(bb_next, I);
   }
+  return instructionsRemoved;
 }
 
 // Function which takes Instruction and returns a string
-void basicCSEPass(Instruction *I) {
+int basicCSEPass(Instruction *I) {
+  int instructionsRemoved = 0;
   // Defensive checks, Early exit
   if (shouldCSEworkOnInstruction(I)) {
     // Remove common instructions in the same basic block
-    removeCommonInstructionsInCurrentBlock(I);
+    instructionsRemoved += removeCommonInstructionsInCurrentBlock(I);
 
     // Remove common instructions in the same function, next block
-    removeCommonInstInDominatedBlocks(I);
+    instructionsRemoved += removeCommonInstInDominatedBlocks(I);
   }
+  return instructionsRemoved;
 }
 
-void eliminateRedundantLoads(BasicBlock::iterator &inputIterator) {
+int eliminateRedundantLoads(BasicBlock::iterator &inputIterator) {
+  int instructionsRemoved = 0;
   // Single Basic Block
   // If instruction is load
   Instruction *currentInst = &*inputIterator;
   if (!(currentInst->getOpcode() == Instruction::Load)
       // && !currentInst->isVolatile()
   ) {
-    return;
+    return instructionsRemoved;
   }
 
   auto *bb = inputIterator->getParent();
-  auto tempIterator = inputIterator;
-  tempIterator++;
-  for (auto iterator = tempIterator; iterator != bb->end();) {
+  inputIterator++;
+  for (auto iterator = inputIterator; iterator != bb->end();) {
     Instruction *nextInst = &*iterator;
     iterator++;
     // Print nextInst
@@ -390,52 +395,83 @@ void eliminateRedundantLoads(BasicBlock::iterator &inputIterator) {
       nextInst->replaceAllUsesWith(currentInst);
       nextInst->eraseFromParent();
       CSE_Rload++;
+      instructionsRemoved++;
     }
   }
+  return instructionsRemoved;
 }
 
-void eliminateRedundantStores(BasicBlock::iterator &iterator) {
-  Instruction *S = &*iterator;
-  if (!(S->getOpcode() == Instruction::Store)) {
-    return;
-  }
-  BasicBlock *bb = iterator->getParent();
-  auto copyIterator = iterator;
-  copyIterator++;
-  bb->print(errs(), NULL);
+int storeThenLoad(Instruction *Store, Instruction *Load,
+                  BasicBlock::iterator _iter) {
+  int instructionsRemoved = 0;
+  //  Get address of store instruction
 
-  // Iterate over copyIterator
+  // Load address of R is same as S
+  auto storeAddress = Store->getOperand(1);
+  auto storeValue = Store->getOperand(0);
+  auto loadAddress = Load->getOperand(0);
+  if (loadAddress == storeAddress) {
+    errs() << __LINE__ << " LOAD MATCH: " << *Load << "\n";
+    if (Load == &*_iter) {
+      _iter++;
+    }
+    Load->replaceAllUsesWith(storeValue);
+    Load->eraseFromParent();
+    CSEStore2Load++;
+    instructionsRemoved++;
+  }
+  return instructionsRemoved;
+}
+
+int storeThenStore(Instruction *firstStore, Instruction *secondStore) {
+  int instructionsRemoved = 0;
+  auto firstStoreAddress = firstStore->getOperand(0);
+  auto secondStoreAddress = secondStore->getOperand(0);
+  errs() << "Found 2 matching stores: " << *firstStore << " " << *secondStore
+         << "\n";
+  // R stores to same address as S
+  if (secondStore->getOperand(1) == firstStore->getOperand(1)) {
+    if (secondStore->getOperand(0)->getType() ==
+        firstStore->getOperand(0)->getType()) {
+
+      firstStore->eraseFromParent();
+      CSE_RStore++;
+      instructionsRemoved++;
+    }
+  }
+  return instructionsRemoved;
+}
+
+int eliminateRedundantStores(BasicBlock::iterator &originalIterator) {
+  int instructionsRemoved = 0;
+  Instruction *S = &*originalIterator;
+  auto copyIterator = originalIterator;
+  // Early Exit
+  if (!(S->getOpcode() == Instruction::Store)) {
+    return instructionsRemoved;
+  }
+  BasicBlock *bb = copyIterator->getParent();
+  copyIterator++;
+  errs() << __LINE__ << " STORE: " << *S << "\n";
   for (auto _iter = copyIterator; _iter != bb->end();) {
     Instruction *R = &*_iter;
     _iter++;
+    if (R->isVolatile()) {
+      continue;
+    }
 
     switch (R->getOpcode()) {
     case Instruction::Load: {
-      if (R->isVolatile()) {
-        continue;
-        ;
-      }
-      // Load address of R is same as S
-      if (R->getOperand(0) == S->getOperand(1)) {
-        // errs() << __LINE__ << " REPLACING " << *R << " WITH "
-        //  << *S->getOperand(0) << "\n";
-        R->replaceAllUsesWith(S->getOperand(0));
-        R->eraseFromParent();
-        CSEStore2Load++;
-      }
-    } break;
-
+      instructionsRemoved += storeThenLoad(S, R, _iter);
+      break;
+    }
     case Instruction::Store: {
-      // R is not volatile
-      if (!(R->isVolatile())) {
-        continue;
-        ;
-      }
-      // R is store to same address as S
-
+      // originalIterator++;
+      // instructionsRemoved += storeThenStore(S, R);
       break;
     }
     }
   }
+  return instructionsRemoved;
 }
 
