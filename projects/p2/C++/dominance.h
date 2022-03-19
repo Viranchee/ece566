@@ -5,6 +5,7 @@
 //#include "llvm-c/Core.h"
 #include "llvm-c/DataTypes.h"
 #include "llvm-c/ExternC.h"
+#include "llvm/IR/Type.h"
 
 LLVM_C_EXTERN_C_BEGIN
 
