@@ -298,6 +298,16 @@ void removeCommonInstructionsIn(BasicBlock::iterator iterator, BasicBlock *bb, I
   for (auto instIter = iterator; instIter != bb->end();) {
     Instruction *nextInstruction = &*instIter;
     instIter++;
+    auto opcode = nextInstruction->getOpcode();
+    // If opcode is Store or Load or GetElementPtr or ICmp or FCmp or ExtractElement or InsertElement or ShuffleVector or ExtractValue or
+    // InsertValue, return
+    if (opcode == Instruction::Store || opcode == Instruction::Load || opcode == Instruction::GetElementPtr ||
+        opcode == Instruction::ICmp || opcode == Instruction::FCmp || opcode == Instruction::ExtractElement ||
+        opcode == Instruction::InsertElement || opcode == Instruction::ShuffleVector || opcode == Instruction::ExtractValue ||
+        opcode == Instruction::InsertValue) {
+      return;
+    }
+
     if (I != nextInstruction && isLiteralMatch(I, nextInstruction)) {
       nextInstruction->replaceAllUsesWith(I);
       nextInstruction->eraseFromParent();
