@@ -375,14 +375,7 @@ int basicCSEPass(Instruction *I) {
 
 int eliminateRedundantLoads(BasicBlock::iterator &inputIterator) {
   int instructionsRemoved = 0;
-  // Single Basic Block
-  // If instruction is load
   Instruction *currentInst = &*inputIterator;
-  if (!(currentInst->getOpcode() == Instruction::Load)
-      // && !currentInst->isVolatile()
-  ) {
-    return instructionsRemoved;
-  }
 
   auto *bb = inputIterator->getParent();
   inputIterator++;
