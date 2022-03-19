@@ -391,6 +391,9 @@ int eliminateRedundantLoads(BasicBlock::iterator &inputIterator) {
       CSE_Rload++;
       instructionsRemoved++;
     }
+    if (nextInst->getOpcode() == Instruction::Store) {
+      break;
+    }
   }
   return instructionsRemoved;
 }
