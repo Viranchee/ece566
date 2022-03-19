@@ -324,9 +324,6 @@ void removeCommonInstInDominatedBlocks(Instruction *I) {
   for (it = Node->begin(), end = Node->end(); it != end; it++) {
     BasicBlock *bb_next = (*it)->getBlock(); // get each bb it immediately adominates
                                              // Iterate over all instructions in bb_next
-    //  Print the dominated block
-    // errs() << I->getParent()->getName() << " dom " << bb_next->getName() << "\tI: " << *I << "\n";
-
     removeCommonInstructionsIn(bb_next->begin(), bb_next, I);
   }
 }
@@ -365,15 +362,13 @@ void eliminateRedundantLoads(LoadInst *loadInst, BasicBlock::iterator &inputIter
 
 /*
 Eliminate redundant stores and loads followed by a load
-TODO: Call instructions: You should treat call instructions as stores to an unknown and possibly same address as S or L
+TODO: Call instructions: You should treat call instructions as stores to an
+unknown and possibly same address as S or L
 @params *storeInst: StoreInst to be worked on
 @params &originalIterator: Iterator to the store instruction
 @returns void: Just runs function
  */
 void eliminateRedundantStores(StoreInst *storeInst, BasicBlock::iterator &originalIterator) {
-  auto storedValue = storeInst->getValueOperand();
-  auto storedAddress = storeInst->getPointerOperand();
-
   auto copyIterator = originalIterator;
   BasicBlock *bb = copyIterator->getParent();
   copyIterator++;
@@ -384,9 +379,10 @@ void eliminateRedundantStores(StoreInst *storeInst, BasicBlock::iterator &origin
     // auto isLoad = nextInst->getOpcode() == Instruction::Load;
     auto loadIsNotVolatile = !nextInst->isVolatile();
 
-    if (nextLoad && loadIsNotVolatile && nextLoad->getPointerOperand() == storeInst->getPointerOperand() && nextLoad->getType() == storeInst->getValueOperand()->getType()) {
+    if (nextLoad && loadIsNotVolatile && nextLoad->getPointerOperand() == storeInst->getPointerOperand() &&
+        nextLoad->getType() == storeInst->getValueOperand()->getType()) {
       copyIterator++;
-      nextInst->replaceAllUsesWith(storedValue);
+      nextInst->replaceAllUsesWith(storeInst->getValueOperand());
       nextInst->eraseFromParent();
       CSEStore2Load++;
       continue;
