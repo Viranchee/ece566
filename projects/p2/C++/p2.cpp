@@ -331,6 +331,7 @@ int removeCommonInstructionsInCurrentBlock(Instruction *I) {
   return removeCommonInstructionsIn(I->getParent(), I);
 }
 
+// TODO: Change DOMTREE Implementation using dominance.h
 DomTreeNodeBase<BasicBlock> *getDomTree(Instruction *I) {
   auto *bb = I->getParent();
   auto *F = bb->getParent();
