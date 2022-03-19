@@ -5,6 +5,8 @@
 #include <stdlib.h>
 #include <unistd.h>
 
+#include "dominance.cpp"
+
 #include "llvm-c/Core.h"
 
 #include "llvm/ADT/Statistic.h"
