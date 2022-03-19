@@ -259,7 +259,6 @@ bool isDead(Instruction &I) {
     case Instruction::And:
     case Instruction::Or:
     case Instruction::Xor:
-    case Instruction::Alloca:
     case Instruction::GetElementPtr:
     case Instruction::Trunc:
     case Instruction::ZExt:
@@ -397,24 +396,50 @@ void debugInstruction(Instruction *inst) {
 }
 
 /*
-Eliminate redundant stores
+Eliminate redundant stores and loads followed by a load
 @params *storeInst: StoreInst to be worked on
 @params &originalIterator: Iterator to the store instruction
 @returns int: Number of instructions removed
  */
 int eliminateRedundantStores(StoreInst *storeInst, BasicBlock::iterator &originalIterator) {
-  struct State {
-    bool interveningLoad = false;
-    bool interveningStore = false;
-    StoreInst *nextStore = nullptr;
-    LoadInst *nextLoad = nullptr;
-  };
-  State state;
-
   int instructionsRemoved = 0;
-
+  auto storedValue = storeInst->getValueOperand();
+  auto storedAddress = storeInst->getPointerOperand();
+  errs() << __LINE__ << ": " << *storeInst << "\n";
   auto copyIterator = originalIterator;
   BasicBlock *bb = copyIterator->getParent();
+  copyIterator++;
+  while (copyIterator != bb->end()) {
+    // Get next instruction
+    Instruction *nextInst = &*copyIterator;
 
+    auto isLoad = nextInst->getOpcode() == Instruction::Load;
+    auto loadIsNotVolatile = !nextInst->isVolatile();
+
+    if (isLoad && loadIsNotVolatile && nextInst->getOperand(0) == storedAddress && nextInst->getType() == storedValue->getType()) {
+      copyIterator++;
+      nextInst->replaceAllUsesWith(storedValue);
+      nextInst->eraseFromParent();
+      CSEStore2Load++;
+      continue;
+    }
+    auto isStore = nextInst->getOpcode() == Instruction::Store;
+    auto initialStoreNotVolatile = !storeInst->isVolatile();
+    if (isStore && initialStoreNotVolatile && storedAddress == nextInst->getOperand(1) &&
+        storedValue->getType() == nextInst->getOperand(0)->getType()) {
+      copyIterator++;
+      originalIterator++;
+      storeInst->eraseFromParent();
+      CSE_RStore++;
+      // TODO: Experiment next_store and continue
+      goto next_store;
+      // continue;
+    }
+    if (isLoad || isStore) {
+      goto next_store;
+    }
+    copyIterator++;
+  }
+next_store:
   return instructionsRemoved;
 }
