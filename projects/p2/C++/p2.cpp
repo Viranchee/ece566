@@ -32,28 +32,17 @@ static void CommonSubexpressionElimination(Module *);
 static void summarize(Module *M);
 static void print_csv_file(std::string outputfile);
 
-static cl::opt<std::string> InputFilename(cl::Positional,
-                                          cl::desc("<input bitcode>"),
-                                          cl::Required, cl::init("-"));
+static cl::opt<std::string> InputFilename(cl::Positional, cl::desc("<input bitcode>"), cl::Required, cl::init("-"));
 
-static cl::opt<std::string> OutputFilename(cl::Positional,
-                                           cl::desc("<output bitcode>"),
-                                           cl::Required, cl::init("out.bc"));
+static cl::opt<std::string> OutputFilename(cl::Positional, cl::desc("<output bitcode>"), cl::Required, cl::init("out.bc"));
 
-static cl::opt<bool>
-    Mem2Reg("mem2reg",
-            cl::desc("Perform memory to register promotion before CSE."),
-            cl::init(false));
+static cl::opt<bool> Mem2Reg("mem2reg", cl::desc("Perform memory to register promotion before CSE."), cl::init(false));
 
-static cl::opt<bool> NoCSE("no-cse",
-                           cl::desc("Do not perform CSE Optimization."),
-                           cl::init(false));
+static cl::opt<bool> NoCSE("no-cse", cl::desc("Do not perform CSE Optimization."), cl::init(false));
 
-static cl::opt<bool> Verbose("verbose", cl::desc("Verbose stats."),
-                             cl::init(false));
+static cl::opt<bool> Verbose("verbose", cl::desc("Verbose stats."), cl::init(false));
 
-static cl::opt<bool> NoCheck("no", cl::desc("Do not check for valid IR."),
-                             cl::init(false));
+static cl::opt<bool> NoCheck("no", cl::desc("Do not check for valid IR."), cl::init(false));
 
 int main(int argc, char **argv) {
   // Parse command line arguments
@@ -115,8 +104,7 @@ int main(int argc, char **argv) {
 }
 
 static llvm::Statistic nFunctions = {"", "Functions", "number of functions"};
-static llvm::Statistic nInstructions = {"", "Instructions",
-                                        "number of instructions"};
+static llvm::Statistic nInstructions = {"", "Instructions", "number of instructions"};
 static llvm::Statistic nLoads = {"", "Loads", "number of loads"};
 static llvm::Statistic nStores = {"", "Stores", "number of stores"};
 
@@ -151,11 +139,9 @@ static void print_csv_file(std::string outputfile) {
 
 static llvm::Statistic CSEDead = {"", "CSEDead", "CSE found dead instructions"};
 static llvm::Statistic CSEElim = {"", "CSEElim", "CSE redundant instructions"};
-static llvm::Statistic CSESimplify = {"", "CSESimplify",
-                                      "CSE simplified instructions"};
+static llvm::Statistic CSESimplify = {"", "CSESimplify", "CSE simplified instructions"};
 static llvm::Statistic CSELdElim = {"", "CSELdElim", "CSE redundant loads"};
-static llvm::Statistic CSEStore2Load = {"", "CSEStore2Load",
-                                        "CSE forwarded store to load"};
+static llvm::Statistic CSEStore2Load = {"", "CSEStore2Load", "CSE forwarded store to load"};
 static llvm::Statistic CSEStElim = {"", "CSEStElim", "CSE redundant stores"};
 
 static llvm::Statistic CSEBasic = {"", "CSEBasic", "CSE Basic "};
@@ -166,15 +152,13 @@ static llvm::Statistic CSE_RStore = {"", "CSE_RStore", "CSE_RStore "};
 bool isDead(Instruction &I);
 int basicCSEPass(Instruction *I);
 int eliminateRedundantLoads(LoadInst *loadInst, BasicBlock::iterator &iterator);
-int eliminateRedundantStores(StoreInst *storeInst,
-                             BasicBlock::iterator &originalIterator);
+int eliminateRedundantStores(StoreInst *storeInst, BasicBlock::iterator &originalIterator);
 
 static void CommonSubexpressionElimination(Module *M) {
 
   // Iterate over all instructions in the module
   for (auto funcIter = M->begin(); funcIter != M->end(); funcIter++) {
-    for (auto blockIter = funcIter->begin(); blockIter != funcIter->end();
-         blockIter++) {
+    for (auto blockIter = funcIter->begin(); blockIter != funcIter->end(); blockIter++) {
       for (auto instIter = blockIter->begin(); instIter != blockIter->end();) {
         Instruction *I = &*instIter;
         auto tempIter = instIter;
@@ -240,9 +224,7 @@ bool shouldCSEworkOnInstruction(Instruction *I) {
 
 bool isLiteralMatch(Instruction *i1, Instruction *i2) {
   // Defensive checks: Match Opcode, Type, #Operands, and operand order
-  if (!((i1->getOpcode() == i2->getOpcode()) &&
-        (i1->getType() == i2->getType()) &&
-        (i1->getNumOperands() == i2->getNumOperands()))) {
+  if (!((i1->getOpcode() == i2->getOpcode()) && (i1->getType() == i2->getType()) && (i1->getNumOperands() == i2->getNumOperands()))) {
     return false;
   }
   for (int i = 0; i < i1->getNumOperands(); i++) {
@@ -332,20 +314,16 @@ int removeCommonInstructionsIn(BasicBlock *bb, Instruction *I) {
   return instructionsRemoved;
 }
 
-int removeCommonInstructionsInCurrentBlock(Instruction *I) {
-  return removeCommonInstructionsIn(I->getParent(), I);
-}
+int removeCommonInstructionsInCurrentBlock(Instruction *I) { return removeCommonInstructionsIn(I->getParent(), I); }
 
 // TODO: Change DOMTREE Implementation using dominance.h
 DomTreeNodeBase<BasicBlock> *getDomTree(Instruction *I) {
   auto *bb = I->getParent();
   auto *F = bb->getParent();
-  DominatorTreeBase<BasicBlock, false> *DT =
-      new DominatorTreeBase<BasicBlock, false>();
-  DT->recalculate(*F); // F is Function*. Use one DominatorTreeBase and
-                       // recalculate tree for each function you visit
-  DomTreeNodeBase<BasicBlock> *Node =
-      DT->getNode(bb); // get Node from some basic block*
+  DominatorTreeBase<BasicBlock, false> *DT = new DominatorTreeBase<BasicBlock, false>();
+  DT->recalculate(*F);                                 // F is Function*. Use one DominatorTreeBase and
+                                                       // recalculate tree for each function you visit
+  DomTreeNodeBase<BasicBlock> *Node = DT->getNode(bb); // get Node from some basic block*
   return Node;
 }
 
@@ -354,8 +332,7 @@ int removeCommonInstInDominatedBlocks(Instruction *I) {
   auto *Node = getDomTree(I);
   DomTreeNodeBase<BasicBlock>::iterator it, end;
   for (it = Node->begin(), end = Node->end(); it != end; it++) {
-    BasicBlock *bb_next =
-        (*it)->getBlock(); // get each bb it immediately adominates
+    BasicBlock *bb_next = (*it)->getBlock(); // get each bb it immediately adominates
     // Iterate over all instructions in bb_next
     instructionsRemoved += removeCommonInstructionsIn(bb_next, I);
   }
@@ -386,8 +363,7 @@ int eliminateRedundantLoads(BasicBlock::iterator &inputIterator) {
     Instruction *nextInst = &*iterator;
     iterator++;
     // Print nextInst
-    if (nextInst->getOpcode() == Instruction::Load && !nextInst->isVolatile() &&
-        currentInst->getType() == nextInst->getType() &&
+    if (nextInst->getOpcode() == Instruction::Load && !nextInst->isVolatile() && currentInst->getType() == nextInst->getType() &&
         currentInst->getOperand(0) == nextInst->getOperand(0)) {
       nextInst->replaceAllUsesWith(currentInst);
       nextInst->eraseFromParent();
@@ -403,10 +379,8 @@ int eliminateRedundantLoads(BasicBlock::iterator &inputIterator) {
 
 void debugStore(StoreInst *storeInst) {
   errs() << " STORE: " << *storeInst << "\n";
-  errs() << "\tStore0 " << *storeInst->getOperand(0) << "\t Store1 "
-         << *storeInst->getOperand(1) << "\n";
-  errs() << "\tValue: " << *storeInst->getValueOperand()
-         << "\t Address: " << *storeInst->getPointerOperand() << "\n";
+  errs() << "\tStore0 " << *storeInst->getOperand(0) << "\t Store1 " << *storeInst->getOperand(1) << "\n";
+  errs() << "\tValue: " << *storeInst->getValueOperand() << "\t Address: " << *storeInst->getPointerOperand() << "\n";
 }
 
 void debugLoad(LoadInst *loadInst) {
@@ -429,8 +403,7 @@ Eliminate redundant stores
 @params &originalIterator: Iterator to the store instruction
 @returns int: Number of instructions removed
  */
-int eliminateRedundantStores(StoreInst *storeInst,
-                             BasicBlock::iterator &originalIterator) {
+int eliminateRedundantStores(StoreInst *storeInst, BasicBlock::iterator &originalIterator) {
   struct State {
     bool interveningLoad = false;
     bool interveningStore = false;
