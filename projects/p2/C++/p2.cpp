@@ -165,14 +165,12 @@ static void CommonSubexpressionElimination(Module *M) {
         // Dead code elimination
         if (isDead(*I)) {
           instIter++;
-          errs() << "Dead Instruction:\t" << *I << "\n";
           I->eraseFromParent();
           CSEDead++;
           continue;
         }
         if (auto simplified = SimplifyInstruction(I, M->getDataLayout())) {
           instIter++;
-          errs() << "Simplified Instruction:\t" << *I << "\n";
           I->replaceAllUsesWith(simplified);
           I->eraseFromParent();
           CSESimplify++;
@@ -299,7 +297,6 @@ int removeCommonInstructionsIn(BasicBlock *bb, Instruction *I) {
     Instruction *nextInstruction = &*instIter;
     instIter++;
     if (I != nextInstruction && isLiteralMatch(I, nextInstruction)) {
-      errs() << __func__ << ": Removing instruction:\t" << *nextInstruction << "\n";
       nextInstruction->replaceAllUsesWith(I);
       nextInstruction->eraseFromParent();
       CSEBasic++;
@@ -359,7 +356,6 @@ int eliminateRedundantLoads(LoadInst *loadInst, BasicBlock::iterator &inputItera
     // Print nextInst
     if (nextInst->getOpcode() == Instruction::Load && !nextInst->isVolatile() && loadInst->getType() == nextInst->getType() &&
         loadInst->getOperand(0) == nextInst->getOperand(0)) {
-      errs() << __func__ << ": Removing instruction:\t" << *nextInst << "\n";
       nextInst->replaceAllUsesWith(loadInst);
       nextInst->eraseFromParent();
       CSE_Rload++;
@@ -382,7 +378,7 @@ int eliminateRedundantStores(StoreInst *storeInst, BasicBlock::iterator &origina
   int instructionsRemoved = 0;
   auto storedValue = storeInst->getValueOperand();
   auto storedAddress = storeInst->getPointerOperand();
-  errs() << __LINE__ << ": " << *storeInst << "\n";
+
   auto copyIterator = originalIterator;
   BasicBlock *bb = copyIterator->getParent();
   copyIterator++;
@@ -394,8 +390,6 @@ int eliminateRedundantStores(StoreInst *storeInst, BasicBlock::iterator &origina
     auto loadIsNotVolatile = !nextInst->isVolatile();
 
     if (isLoad && loadIsNotVolatile && nextInst->getOperand(0) == storedAddress && nextInst->getType() == storedValue->getType()) {
-      errs() << __func__ << ": "
-             << "\tREPLACING\t" << *nextInst << "\tWITH\t" << *storedValue << "\n";
       copyIterator++;
       nextInst->replaceAllUsesWith(storedValue);
       nextInst->eraseFromParent();
@@ -408,8 +402,6 @@ int eliminateRedundantStores(StoreInst *storeInst, BasicBlock::iterator &origina
         storedValue->getType() == nextInst->getOperand(0)->getType()) {
       copyIterator++;
       originalIterator++;
-      errs() << __func__ << ": "
-             << "\tREMOVING\t" << *storeInst << "\n";
       storeInst->eraseFromParent();
       CSE_RStore++;
       // TODO: Experiment next_store and continue
