@@ -371,7 +371,6 @@ TODO: Call instructions: You should treat call instructions as stores to an unkn
 @returns void: Just runs function
  */
 void eliminateRedundantStores(StoreInst *storeInst, BasicBlock::iterator &originalIterator) {
-  bool _break = false;
   auto storedValue = storeInst->getValueOperand();
   auto storedAddress = storeInst->getPointerOperand();
 
@@ -381,28 +380,28 @@ void eliminateRedundantStores(StoreInst *storeInst, BasicBlock::iterator &origin
   while (copyIterator != bb->end()) {
     // Get next instruction
     Instruction *nextInst = &*copyIterator;
-
-    auto isLoad = nextInst->getOpcode() == Instruction::Load;
+    auto nextLoad = dyn_cast<LoadInst>(nextInst);
+    // auto isLoad = nextInst->getOpcode() == Instruction::Load;
     auto loadIsNotVolatile = !nextInst->isVolatile();
 
-    if (isLoad && loadIsNotVolatile && nextInst->getOperand(0) == storedAddress && nextInst->getType() == storedValue->getType()) {
+    if (nextLoad && loadIsNotVolatile && nextLoad->getPointerOperand() == storeInst->getPointerOperand() && nextLoad->getType() == storeInst->getValueOperand()->getType()) {
       copyIterator++;
       nextInst->replaceAllUsesWith(storedValue);
       nextInst->eraseFromParent();
       CSEStore2Load++;
       continue;
     }
-    auto isStore = nextInst->getOpcode() == Instruction::Store;
+    auto nextStore = dyn_cast<StoreInst>(nextInst);
     auto initialStoreNotVolatile = !storeInst->isVolatile();
-    if (isStore && initialStoreNotVolatile && storedAddress == nextInst->getOperand(1) &&
-        storedValue->getType() == nextInst->getOperand(0)->getType()) {
+    if (nextStore && initialStoreNotVolatile && storeInst->getPointerOperand() == nextStore->getPointerOperand() &&
+        storeInst->getValueOperand()->getType() == nextStore->getValueOperand()->getType()) {
       copyIterator++;
       originalIterator++;
       storeInst->eraseFromParent();
       CSEStElim++;
       break;
     }
-    if (isLoad || isStore) {
+    if (nextLoad || nextStore) {
       break;
     }
     copyIterator++;
