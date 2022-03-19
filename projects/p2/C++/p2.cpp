@@ -400,15 +400,11 @@ void eliminateRedundantStores(StoreInst *storeInst, BasicBlock::iterator &origin
       originalIterator++;
       storeInst->eraseFromParent();
       CSEStElim++;
-      // TODO: Experiment next_store and continue
-      // goto next_store; // WORKS. DON"T MESS HERE LOL
-      // continue;
       break;
     }
     if (isLoad || isStore) {
       break;
     }
-
     copyIterator++;
   }
   return;
