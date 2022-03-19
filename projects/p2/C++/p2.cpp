@@ -151,7 +151,7 @@ static llvm::Statistic CSE_RStore = {"", "CSE_RStore", "CSE_RStore "};
 // Function Signatures
 bool isDead(Instruction &I);
 int basicCSEPass(Instruction *I);
-int eliminateRedundantLoads(LoadInst *loadInst, BasicBlock::iterator &iterator);
+int eliminateRedundantLoads(LoadInst *loadInst, BasicBlock::iterator &inputIterator);
 int eliminateRedundantStores(StoreInst *storeInst, BasicBlock::iterator &originalIterator);
 
 static void CommonSubexpressionElimination(Module *M) {
@@ -353,9 +353,8 @@ int basicCSEPass(Instruction *I) {
   return instructionsRemoved;
 }
 
-int eliminateRedundantLoads(BasicBlock::iterator &inputIterator) {
+int eliminateRedundantLoads(LoadInst *loadInst, BasicBlock::iterator &inputIterator) {
   int instructionsRemoved = 0;
-  Instruction *currentInst = &*inputIterator;
 
   auto *bb = inputIterator->getParent();
   inputIterator++;
@@ -363,9 +362,9 @@ int eliminateRedundantLoads(BasicBlock::iterator &inputIterator) {
     Instruction *nextInst = &*iterator;
     iterator++;
     // Print nextInst
-    if (nextInst->getOpcode() == Instruction::Load && !nextInst->isVolatile() && currentInst->getType() == nextInst->getType() &&
-        currentInst->getOperand(0) == nextInst->getOperand(0)) {
-      nextInst->replaceAllUsesWith(currentInst);
+    if (nextInst->getOpcode() == Instruction::Load && !nextInst->isVolatile() && loadInst->getType() == nextInst->getType() &&
+        loadInst->getOperand(0) == nextInst->getOperand(0)) {
+      nextInst->replaceAllUsesWith(loadInst);
       nextInst->eraseFromParent();
       CSE_Rload++;
       instructionsRemoved++;
