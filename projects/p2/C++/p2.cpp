@@ -316,8 +316,7 @@ DomTreeNodeBase<BasicBlock> *getDomTree(Instruction *I) {
   return Node;
 }
 
-int removeCommonInstInDominatedBlocks(Instruction *I) {
-
+void removeCommonInstInDominatedBlocks(Instruction *I) {
   auto *Node = getDomTree(I);
   DomTreeNodeBase<BasicBlock>::iterator it, end;
   for (it = Node->begin(), end = Node->end(); it != end; it++) {
