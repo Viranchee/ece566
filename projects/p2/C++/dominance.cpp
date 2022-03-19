@@ -9,7 +9,7 @@
 #include <stdlib.h>
 
 /* LLVM Header Files */
-#include "llvm-c/Core.h"
+
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/Value.h"
 #include "llvm/IR/Module.h"
@@ -54,110 +54,110 @@ void UpdateDominators(Function *F)
 }
 
 // Test if a dom b
-LLVMBool LLVMDominates(LLVMValueRef Fun, LLVMBasicBlockRef a, LLVMBasicBlockRef b)
+bool LLVMDominates(Value* Fun, BasicBlock* a, BasicBlock* b)
 {
-  UpdateDominators((Function*)unwrap(Fun));
-  return DT->dominates(unwrap(a),unwrap(b));
+  UpdateDominators((Function*)Fun);
+  return DT->dominates(a,b);
 }
 
 // Test if a pdom b
-LLVMBool LLVMPostDominates(LLVMValueRef Fun, LLVMBasicBlockRef a, LLVMBasicBlockRef b)
+bool LLVMPostDominates(Value* Fun, BasicBlock* a, BasicBlock* b)
 {
-  UpdateDominators((Function*)unwrap(Fun));
-  return PDT->dominates(unwrap(a),unwrap(b));
+  UpdateDominators((Function*)Fun);
+  return PDT->dominates(a,b);
 }
 
-LLVMBool LLVMIsReachableFromEntry(LLVMValueRef Fun, LLVMBasicBlockRef bb) {
-  UpdateDominators((Function*)unwrap(Fun));
-  return DT->isReachableFromEntry(unwrap(bb));
+bool LLVMIsReachableFromEntry(Value* Fun, BasicBlock* bb) {
+  UpdateDominators((Function*)Fun);
+  return DT->isReachableFromEntry(bb);
 }
 
 
-LLVMBasicBlockRef LLVMImmDom(LLVMBasicBlockRef BB)
+BasicBlock* LLVMImmDom(BasicBlock* BB)
 {
-  UpdateDominators(unwrap(BB)->getParent());
+  UpdateDominators(BB->getParent());
 
-  if ( DT->getNode((BasicBlock*)unwrap(BB)) == NULL )
+  if ( DT->getNode((BasicBlock*)BB) == NULL )
     return NULL;
   
-  if ( DT->getNode((BasicBlock*)unwrap(BB))->getIDom()==NULL )
+  if ( DT->getNode((BasicBlock*)BB)->getIDom()==NULL )
     return NULL;
 
-  return wrap(DT->getNode(unwrap(BB))->getIDom()->getBlock());
+  return DT->getNode(BB)->getIDom()->getBlock();
 }
 
-LLVMBasicBlockRef LLVMImmPostDom(LLVMBasicBlockRef BB)
+BasicBlock* LLVMImmPostDom(BasicBlock* BB)
 {
-  UpdateDominators(unwrap(BB)->getParent());
+  UpdateDominators(BB->getParent());
 
-  if (PDT->getNode(unwrap(BB))->getIDom()==NULL)
+  if (PDT->getNode(BB)->getIDom()==NULL)
     return NULL;
 
-  return wrap((BasicBlock*)PDT->getNode(unwrap(BB))->getIDom()->getBlock());
+  return (BasicBlock*)PDT->getNode(BB)->getIDom()->getBlock();
 }
 
-LLVMBasicBlockRef LLVMFirstDomChild(LLVMBasicBlockRef BB)
+BasicBlock* LLVMFirstDomChild(BasicBlock* BB)
 {
-  UpdateDominators(unwrap(BB)->getParent());
-  DomTreeNodeBase<BasicBlock> *Node = DT->getNode(unwrap(BB));
+  UpdateDominators(BB->getParent());
+  DomTreeNodeBase<BasicBlock> *Node = DT->getNode(BB);
 
   if(Node==NULL)
     return NULL;
 
   DomTreeNodeBase<BasicBlock>::iterator it = Node->begin();
   if (it!=Node->end())
-    return wrap((*it)->getBlock());
+    return (*it)->getBlock();
   return NULL;
 }
 
-LLVMBasicBlockRef LLVMNextDomChild(LLVMBasicBlockRef BB, LLVMBasicBlockRef Child)
+BasicBlock* LLVMNextDomChild(BasicBlock* BB, BasicBlock* Child)
 {
-  UpdateDominators(unwrap(BB)->getParent());
-  DomTreeNodeBase<BasicBlock> *Node = DT->getNode(unwrap(BB));
+  UpdateDominators(BB->getParent());
+  DomTreeNodeBase<BasicBlock> *Node = DT->getNode(BB);
   DomTreeNodeBase<BasicBlock>::iterator it,end;
 
   bool next=false;
   for(it=Node->begin(),end=Node->end(); it!=end; it++)
     if (next)
-      return wrap((*it)->getBlock());
-    else if (*it==DT->getNode(unwrap(Child)))
+      return (*it)->getBlock();
+    else if (*it==DT->getNode(Child))
       next=true;
 
   return NULL;
 }
 
 
-LLVMBasicBlockRef LLVMNearestCommonDominator(LLVMBasicBlockRef A, LLVMBasicBlockRef B)
+BasicBlock* LLVMNearestCommonDominator(BasicBlock* A, BasicBlock* B)
 {
-  UpdateDominators(unwrap(A)->getParent());
-  return wrap(DT->findNearestCommonDominator(unwrap(A),unwrap(B)));
+  UpdateDominators(A->getParent());
+  return DT->findNearestCommonDominator(A,B);
 }
 
-unsigned LLVMGetLoopNestingDepth(LLVMBasicBlockRef BB)
+unsigned LLVMGetLoopNestingDepth(BasicBlock* BB)
 {
   if (LI==NULL)
-    UpdateDominators(unwrap(BB)->getParent());
+    UpdateDominators(BB->getParent());
 
-  return LI->getLoopDepth(unwrap(BB));
+  return LI->getLoopDepth(BB);
 }
 
 
-LLVMBasicBlockRef LLVMDominanceFrontierLocal(LLVMBasicBlockRef BB)
+BasicBlock* LLVMDominanceFrontierLocal(BasicBlock* BB)
 {
   return NULL;
 }
 
-LLVMBasicBlockRef LLVMDominanceFrontierClosure(LLVMBasicBlockRef BB)
+BasicBlock* LLVMDominanceFrontierClosure(BasicBlock* BB)
 {
   return NULL;
 }
 
-LLVMBasicBlockRef LLVMPostDominanceFrontierLocal(LLVMBasicBlockRef BB)
+BasicBlock* LLVMPostDominanceFrontierLocal(BasicBlock* BB)
 {
   return NULL;
 }
 
-LLVMBasicBlockRef LLVMPostDominanceFrontierClosure(LLVMBasicBlockRef BB)
+BasicBlock* LLVMPostDominanceFrontierClosure(BasicBlock* BB)
 {
   return NULL;
 }

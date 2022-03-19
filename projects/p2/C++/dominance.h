@@ -3,24 +3,26 @@
 
 //#include "llvm/Support/DataTypes.h"
 //#include "llvm-c/Core.h"
-#include "llvm-c/DataTypes.h"
-#include "llvm-c/ExternC.h"
 #include "llvm/IR/Type.h"
+
+#include "llvm/IR/BasicBlock.h"
+
+using namespace llvm;
 
 LLVM_C_EXTERN_C_BEGIN
 
-LLVMBool LLVMDominates(LLVMValueRef Fun, LLVMBasicBlockRef a, LLVMBasicBlockRef b);
-LLVMBool LLVMPostDominates(LLVMValueRef Fun, LLVMBasicBlockRef a, LLVMBasicBlockRef b);
+bool LLVMDominates(Value *Fun, BasicBlock *a, BasicBlock *b);
+bool LLVMPostDominates(Value *Fun, BasicBlock *a, BasicBlock *b);
 
-LLVMBasicBlockRef LLVMImmDom(LLVMBasicBlockRef BB);
-LLVMBasicBlockRef LLVMImmPostDom(LLVMBasicBlockRef BB);
+BasicBlock *LLVMImmDom(BasicBlock *BB);
+BasicBlock *LLVMImmPostDom(BasicBlock *BB);
 
-LLVMBasicBlockRef LLVMNearestCommonDominator(LLVMBasicBlockRef A, LLVMBasicBlockRef B);
-unsigned LLVMGetLoopNestingDepth(LLVMBasicBlockRef BB);
+BasicBlock *LLVMNearestCommonDominator(BasicBlock *A, BasicBlock *B);
+unsigned LLVMGetLoopNestingDepth(BasicBlock *BB);
 
-LLVMBasicBlockRef LLVMFirstDomChild(LLVMBasicBlockRef BB);
-LLVMBasicBlockRef LLVMNextDomChild(LLVMBasicBlockRef BB, LLVMBasicBlockRef Child);
-LLVMBool LLVMIsReachableFromEntry(LLVMValueRef Fun, LLVMBasicBlockRef bb);
+BasicBlock *LLVMFirstDomChild(BasicBlock *BB);
+BasicBlock *LLVMNextDomChild(BasicBlock *BB, BasicBlock *Child);
+bool LLVMIsReachableFromEntry(Value *Fun, BasicBlock *bb);
 
 LLVM_C_EXTERN_C_END
 
