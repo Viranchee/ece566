@@ -167,6 +167,8 @@ static void CommonSubexpressionElimination(Module *M) {
           CSEDead++;
           continue;
         }
+
+        // Simplify instructions
         if (auto simplified = SimplifyInstruction(I, M->getDataLayout())) {
           instIter++;
           I->replaceAllUsesWith(simplified);
@@ -192,7 +194,7 @@ static void CommonSubexpressionElimination(Module *M) {
           eliminateRedundantStores(storeInst, instIter);
         }
 
-        // Test functions in Dominance.cpp
+        // TODO: Test functions in Dominance.cpp
 
         if (instIter == tempIter) {
           instIter++;
@@ -316,13 +318,14 @@ DomTreeNodeBase<BasicBlock> *getDomTree(Instruction *I) {
 }
 
 void removeCommonInstInDominatedBlocks(Instruction *I) {
+
   auto *Node = getDomTree(I);
   DomTreeNodeBase<BasicBlock>::iterator it, end;
   for (it = Node->begin(), end = Node->end(); it != end; it++) {
     BasicBlock *bb_next = (*it)->getBlock(); // get each bb it immediately adominates
                                              // Iterate over all instructions in bb_next
     //  Print the dominated block
-    errs() << I->getParent()->getName() << " dom " << bb_next->getName() << "\tI: " << *I << "\n";
+    // errs() << I->getParent()->getName() << " dom " << bb_next->getName() << "\tI: " << *I << "\n";
 
     removeCommonInstructionsIn(bb_next->begin(), bb_next, I);
   }
@@ -337,7 +340,6 @@ void basicCSEPass(BasicBlock::iterator &inputIterator) {
     removeCommonInstructionsIn(inputIterator, I->getParent(), I);
 
     // Remove common instructions in the same function, next block
-
     removeCommonInstInDominatedBlocks(I);
   }
 }
@@ -369,7 +371,7 @@ TODO: Call instructions: You should treat call instructions as stores to an unkn
 @returns void: Just runs function
  */
 void eliminateRedundantStores(StoreInst *storeInst, BasicBlock::iterator &originalIterator) {
-
+  bool _break = false;
   auto storedValue = storeInst->getValueOperand();
   auto storedAddress = storeInst->getPointerOperand();
 
@@ -399,14 +401,15 @@ void eliminateRedundantStores(StoreInst *storeInst, BasicBlock::iterator &origin
       storeInst->eraseFromParent();
       CSEStElim++;
       // TODO: Experiment next_store and continue
-      goto next_store;
+      // goto next_store; // WORKS. DON"T MESS HERE LOL
       // continue;
+      break;
     }
     if (isLoad || isStore) {
-      goto next_store;
+      break;
     }
+
     copyIterator++;
   }
-next_store:
   return;
 }
