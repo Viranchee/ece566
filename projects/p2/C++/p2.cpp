@@ -180,14 +180,12 @@ static void CommonSubexpressionElimination(Module *M) {
         // Dead code elimination
         if (isDead(*I)) {
           instIter++;
-          errs() << "Dead Instruction: " << *I << "\n";
           I->eraseFromParent();
           CSEDead++;
           continue;
         }
         if (auto simplified = SimplifyInstruction(I, M->getDataLayout())) {
           instIter++;
-          errs() << "Simplified Instruction: " << *I << "\n";
           I->replaceAllUsesWith(simplified);
           I->eraseFromParent();
           CSESimplify++;
