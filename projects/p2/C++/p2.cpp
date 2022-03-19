@@ -165,12 +165,14 @@ static void CommonSubexpressionElimination(Module *M) {
         // Dead code elimination
         if (isDead(*I)) {
           instIter++;
+          errs() << "Dead Instruction:\t" << *I << "\n";
           I->eraseFromParent();
           CSEDead++;
           continue;
         }
         if (auto simplified = SimplifyInstruction(I, M->getDataLayout())) {
           instIter++;
+          errs() << "Simplified Instruction:\t" << *I << "\n";
           I->replaceAllUsesWith(simplified);
           I->eraseFromParent();
           CSESimplify++;
@@ -283,13 +285,6 @@ bool isDead(Instruction &I) {
     case Instruction::ExtractValue:
     case Instruction::InsertValue:
       return true; // dead, but this is not enough
-
-    case Instruction::Load: {
-      auto *li = dyn_cast<LoadInst>(&I);
-      if (li && li->isVolatile())
-        return false;
-      return true;
-    }
     default:
       // any other opcode fails
       return false;
@@ -304,6 +299,7 @@ int removeCommonInstructionsIn(BasicBlock *bb, Instruction *I) {
     Instruction *nextInstruction = &*instIter;
     instIter++;
     if (I != nextInstruction && isLiteralMatch(I, nextInstruction)) {
+      errs() << __func__ << ": Removing instruction:\t" << *nextInstruction << "\n";
       nextInstruction->replaceAllUsesWith(I);
       nextInstruction->eraseFromParent();
       CSEBasic++;
@@ -363,6 +359,7 @@ int eliminateRedundantLoads(LoadInst *loadInst, BasicBlock::iterator &inputItera
     // Print nextInst
     if (nextInst->getOpcode() == Instruction::Load && !nextInst->isVolatile() && loadInst->getType() == nextInst->getType() &&
         loadInst->getOperand(0) == nextInst->getOperand(0)) {
+      errs() << __func__ << ": Removing instruction:\t" << *nextInst << "\n";
       nextInst->replaceAllUsesWith(loadInst);
       nextInst->eraseFromParent();
       CSE_Rload++;
@@ -373,26 +370,6 @@ int eliminateRedundantLoads(LoadInst *loadInst, BasicBlock::iterator &inputItera
     }
   }
   return instructionsRemoved;
-}
-
-void debugStore(StoreInst *storeInst) {
-  errs() << " STORE: " << *storeInst << "\n";
-  errs() << "\tStore0 " << *storeInst->getOperand(0) << "\t Store1 " << *storeInst->getOperand(1) << "\n";
-  errs() << "\tValue: " << *storeInst->getValueOperand() << "\t Address: " << *storeInst->getPointerOperand() << "\n";
-}
-
-void debugLoad(LoadInst *loadInst) {
-  errs() << " LOAD: " << *loadInst << "\n";
-  errs() << "\tLoad0 " << *loadInst->getOperand(0) << "\n";
-  errs() << "\tLOAD ADDRESS: " << *loadInst->getPointerOperand() << "\n";
-}
-
-void debugInstruction(Instruction *inst) {
-  errs() << " INST: " << *inst << "\n"
-         << "\tType: " << *inst->getType() << "\n";
-  for (unsigned i = 0; i < inst->getNumOperands(); i++) {
-    errs() << "\tOperand" << i << ": " << *inst->getOperand(i) << "\n";
-  }
 }
 
 /*
@@ -417,6 +394,8 @@ int eliminateRedundantStores(StoreInst *storeInst, BasicBlock::iterator &origina
     auto loadIsNotVolatile = !nextInst->isVolatile();
 
     if (isLoad && loadIsNotVolatile && nextInst->getOperand(0) == storedAddress && nextInst->getType() == storedValue->getType()) {
+      errs() << __func__ << ": "
+             << "\tREPLACING\t" << *nextInst << "\tWITH\t" << *storedValue << "\n";
       copyIterator++;
       nextInst->replaceAllUsesWith(storedValue);
       nextInst->eraseFromParent();
@@ -429,6 +408,8 @@ int eliminateRedundantStores(StoreInst *storeInst, BasicBlock::iterator &origina
         storedValue->getType() == nextInst->getOperand(0)->getType()) {
       copyIterator++;
       originalIterator++;
+      errs() << __func__ << ": "
+             << "\tREMOVING\t" << *storeInst << "\n";
       storeInst->eraseFromParent();
       CSE_RStore++;
       // TODO: Experiment next_store and continue
