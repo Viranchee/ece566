@@ -196,13 +196,15 @@ static void CommonSubexpressionElimination(Module *M) {
         { basicCSEPass(I); }
 
         // Optimization 2: Eliminate Redundant Loads
-        {
+        if (I->getOpcode() == Instruction::Load) {
           auto copyIterator = instIter;
           eliminateRedundantLoads(copyIterator);
         }
 
         // Optimization 3: Eliminate Redundant Stores
-        { eliminateRedundantStores(instIter); }
+        if (I->getOpcode() == Instruction::Store) {
+          eliminateRedundantStores(instIter);
+        }
 
         if (instIter == tempIter) {
           instIter++;
