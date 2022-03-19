@@ -439,6 +439,28 @@ int storeThenStore(Instruction *firstStore, Instruction *secondStore) {
   return instructionsRemoved;
 }
 
+void debugStore(StoreInst *storeInst) {
+  errs() << " STORE: " << *storeInst << "\n";
+  errs() << "\tStore0 " << *storeInst->getOperand(0) << "\t Store1 "
+         << *storeInst->getOperand(1) << "\n";
+  errs() << "\tValue: " << *storeInst->getValueOperand()
+         << "\t Address: " << *storeInst->getPointerOperand() << "\n";
+}
+
+void debugLoad(LoadInst *loadInst) {
+  errs() << " LOAD: " << *loadInst << "\n";
+  errs() << "\tLoad0 " << *loadInst->getOperand(0) << "\n";
+  errs() << "\tLOAD ADDRESS: " << *loadInst->getPointerOperand() << "\n";
+}
+
+void debugInstruction(Instruction *inst) {
+  errs() << " INST: " << *inst << "\n"
+         << "\tType: " << *inst->getType() << "\n";
+  for (unsigned i = 0; i < inst->getNumOperands(); i++) {
+    errs() << "\tOperand" << i << ": " << *inst->getOperand(i) << "\n";
+  }
+}
+
 int eliminateRedundantStores(BasicBlock::iterator &originalIterator) {
   int instructionsRemoved = 0;
   Instruction *S = &*originalIterator;
