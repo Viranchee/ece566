@@ -272,7 +272,7 @@ bool isDead(Instruction &I) {
     case Instruction::And:
     case Instruction::Or:
     case Instruction::Xor:
-    // case Instruction::Alloca:
+    case Instruction::Alloca:
     case Instruction::GetElementPtr:
     case Instruction::Trunc:
     case Instruction::ZExt:
