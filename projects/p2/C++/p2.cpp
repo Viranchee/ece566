@@ -165,8 +165,9 @@ static llvm::Statistic CSE_RStore = {"", "CSE_RStore", "CSE_RStore "};
 // Function Signatures
 bool isDead(Instruction &I);
 int basicCSEPass(Instruction *I);
-int eliminateRedundantLoads(BasicBlock::iterator &iterator);
-int eliminateRedundantStores(BasicBlock::iterator &iterator);
+int eliminateRedundantLoads(LoadInst *loadInst, BasicBlock::iterator &iterator);
+int eliminateRedundantStores(StoreInst *storeInst,
+                             BasicBlock::iterator &originalIterator);
 
 static void CommonSubexpressionElimination(Module *M) {
 
@@ -198,12 +199,14 @@ static void CommonSubexpressionElimination(Module *M) {
         // Optimization 2: Eliminate Redundant Loads
         if (I->getOpcode() == Instruction::Load) {
           auto copyIterator = instIter;
-          eliminateRedundantLoads(copyIterator);
+          LoadInst *loadInst = cast<LoadInst>(I);
+          eliminateRedundantLoads(loadInst, copyIterator);
         }
 
         // Optimization 3: Eliminate Redundant Stores
         if (I->getOpcode() == Instruction::Store) {
-          eliminateRedundantStores(instIter);
+          StoreInst *storeInst = cast<StoreInst>(I);
+          eliminateRedundantStores(storeInst, instIter);
         }
 
         if (instIter == tempIter) {
@@ -398,47 +401,6 @@ int eliminateRedundantLoads(BasicBlock::iterator &inputIterator) {
   return instructionsRemoved;
 }
 
-int storeThenLoad(Instruction *Store, Instruction *Load,
-                  BasicBlock::iterator _iter) {
-  int instructionsRemoved = 0;
-  //  Get address of store instruction
-
-  // Load address of R is same as S
-  auto storeAddress = Store->getOperand(1);
-  auto storeValue = Store->getOperand(0);
-  auto loadAddress = Load->getOperand(0);
-  if (loadAddress == storeAddress) {
-    errs() << __LINE__ << " LOAD MATCH: " << *Load << "\n";
-    if (Load == &*_iter) {
-      _iter++;
-    }
-    Load->replaceAllUsesWith(storeValue);
-    Load->eraseFromParent();
-    CSEStore2Load++;
-    instructionsRemoved++;
-  }
-  return instructionsRemoved;
-}
-
-int storeThenStore(Instruction *firstStore, Instruction *secondStore) {
-  int instructionsRemoved = 0;
-  auto firstStoreAddress = firstStore->getOperand(0);
-  auto secondStoreAddress = secondStore->getOperand(0);
-  errs() << "Found 2 matching stores: " << *firstStore << " " << *secondStore
-         << "\n";
-  // R stores to same address as S
-  if (secondStore->getOperand(1) == firstStore->getOperand(1)) {
-    if (secondStore->getOperand(0)->getType() ==
-        firstStore->getOperand(0)->getType()) {
-
-      firstStore->eraseFromParent();
-      CSE_RStore++;
-      instructionsRemoved++;
-    }
-  }
-  return instructionsRemoved;
-}
-
 void debugStore(StoreInst *storeInst) {
   errs() << " STORE: " << *storeInst << "\n";
   errs() << "\tStore0 " << *storeInst->getOperand(0) << "\t Store1 "
@@ -461,16 +423,14 @@ void debugInstruction(Instruction *inst) {
   }
 }
 
-int eliminateRedundantStores(BasicBlock::iterator &originalIterator) {
-  int instructionsRemoved = 0;
-
-  Instruction *S = &*originalIterator;
-  auto *storeInst = cast<StoreInst>(S);
-  // debugStore(storeInst);
-
-  auto copyIterator = originalIterator;
-  BasicBlock *bb = copyIterator->getParent();
-
+/*
+Eliminate redundant stores
+@params *storeInst: StoreInst to be worked on
+@params &originalIterator: Iterator to the store instruction
+@returns int: Number of instructions removed
+ */
+int eliminateRedundantStores(StoreInst *storeInst,
+                             BasicBlock::iterator &originalIterator) {
   struct State {
     bool interveningLoad = false;
     bool interveningStore = false;
@@ -479,27 +439,10 @@ int eliminateRedundantStores(BasicBlock::iterator &originalIterator) {
   };
   State state;
 
-  copyIterator++;
-  errs() << __LINE__ << " STORE: " << *S << "\n";
-  for (auto _iter = copyIterator; _iter != bb->end();) {
-    Instruction *R = &*_iter;
-    _iter++;
-    if (R->isVolatile()) {
-      continue;
-    }
+  int instructionsRemoved = 0;
 
-    switch (R->getOpcode()) {
-    case Instruction::Load: {
-      instructionsRemoved += storeThenLoad(S, R, _iter);
-      break;
-    }
-    case Instruction::Store: {
-      // originalIterator++;
-      // instructionsRemoved += storeThenStore(S, R);
-      break;
-    }
-    }
-  }
+  auto copyIterator = originalIterator;
+  BasicBlock *bb = copyIterator->getParent();
+
   return instructionsRemoved;
 }
-
