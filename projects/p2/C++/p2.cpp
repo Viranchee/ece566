@@ -463,13 +463,22 @@ void debugInstruction(Instruction *inst) {
 
 int eliminateRedundantStores(BasicBlock::iterator &originalIterator) {
   int instructionsRemoved = 0;
+
   Instruction *S = &*originalIterator;
+  auto *storeInst = cast<StoreInst>(S);
+  // debugStore(storeInst);
+
   auto copyIterator = originalIterator;
-  // Early Exit
-  if (!(S->getOpcode() == Instruction::Store)) {
-    return instructionsRemoved;
-  }
   BasicBlock *bb = copyIterator->getParent();
+
+  struct State {
+    bool interveningLoad = false;
+    bool interveningStore = false;
+    StoreInst *nextStore = nullptr;
+    LoadInst *nextLoad = nullptr;
+  };
+  State state;
+
   copyIterator++;
   errs() << __LINE__ << " STORE: " << *S << "\n";
   for (auto _iter = copyIterator; _iter != bb->end();) {
