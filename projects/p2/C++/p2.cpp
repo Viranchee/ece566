@@ -192,6 +192,8 @@ static void CommonSubexpressionElimination(Module *M) {
           eliminateRedundantStores(storeInst, instIter);
         }
 
+        // Test functions in Dominance.cpp
+
         if (instIter == tempIter) {
           instIter++;
         }
@@ -290,9 +292,8 @@ bool isDead(Instruction &I) {
   return false;
 }
 
-void removeCommonInstructionsIn(BasicBlock *bb, Instruction *I) {
-
-  for (auto instIter = bb->begin(); instIter != bb->end();) {
+void removeCommonInstructionsIn(BasicBlock::iterator iterator, BasicBlock *bb, Instruction *I) {
+  for (auto instIter = iterator; instIter != bb->end();) {
     Instruction *nextInstruction = &*instIter;
     instIter++;
     if (I != nextInstruction && isLiteralMatch(I, nextInstruction)) {
@@ -320,7 +321,10 @@ void removeCommonInstInDominatedBlocks(Instruction *I) {
   for (it = Node->begin(), end = Node->end(); it != end; it++) {
     BasicBlock *bb_next = (*it)->getBlock(); // get each bb it immediately adominates
                                              // Iterate over all instructions in bb_next
-    removeCommonInstructionsIn(bb_next, I);
+    //  Print the dominated block
+    errs() << I->getParent()->getName() << " dom " << bb_next->getName() << "\tI: " << *I << "\n";
+
+    removeCommonInstructionsIn(bb_next->begin(), bb_next, I);
   }
 }
 
@@ -329,12 +333,11 @@ void basicCSEPass(BasicBlock::iterator &inputIterator) {
   auto *I = &*inputIterator;
   // Defensive checks, Early exit
   if (shouldCSEworkOnInstruction(I)) {
-    // TODO: Change DOMTREE Implementation using dominance.h
-    // TODO: Iterate from the current instruction to the end of the basic block, not from the beginning
     // Remove common instructions in the same basic block
-    removeCommonInstructionsIn(I->getParent(), I);
+    removeCommonInstructionsIn(inputIterator, I->getParent(), I);
 
     // Remove common instructions in the same function, next block
+
     removeCommonInstInDominatedBlocks(I);
   }
 }
