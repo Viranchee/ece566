@@ -150,9 +150,9 @@ static llvm::Statistic CSE_RStore = {"", "CSE_RStore", "CSE_RStore "};
 
 // Function Signatures
 bool isDead(Instruction &I);
-int basicCSEPass(Instruction *I);
-int eliminateRedundantLoads(LoadInst *loadInst, BasicBlock::iterator &inputIterator);
-int eliminateRedundantStores(StoreInst *storeInst, BasicBlock::iterator &originalIterator);
+void basicCSEPass(BasicBlock::iterator &inputIterator);
+void eliminateRedundantLoads(LoadInst *loadInst, BasicBlock::iterator &inputIterator);
+void eliminateRedundantStores(StoreInst *storeInst, BasicBlock::iterator &originalIterator);
 
 static void CommonSubexpressionElimination(Module *M) {
 
@@ -178,7 +178,8 @@ static void CommonSubexpressionElimination(Module *M) {
         }
 
         // Optimization 1: Common Subexpression Elimination
-        { basicCSEPass(I); }
+        auto copyIterator = instIter;
+        basicCSEPass(copyIterator);
 
         // Optimization 2: Eliminate Redundant Loads
         if (I->getOpcode() == Instruction::Load) {
@@ -291,8 +292,8 @@ bool isDead(Instruction &I) {
   return false;
 }
 
-int removeCommonInstructionsIn(BasicBlock *bb, Instruction *I) {
-  int instructionsRemoved = 0;
+void removeCommonInstructionsIn(BasicBlock *bb, Instruction *I) {
+
   for (auto instIter = bb->begin(); instIter != bb->end();) {
     Instruction *nextInstruction = &*instIter;
     instIter++;
@@ -300,13 +301,9 @@ int removeCommonInstructionsIn(BasicBlock *bb, Instruction *I) {
       nextInstruction->replaceAllUsesWith(I);
       nextInstruction->eraseFromParent();
       CSEBasic++;
-      instructionsRemoved++;
     }
   }
-  return instructionsRemoved;
 }
-
-int removeCommonInstructionsInCurrentBlock(Instruction *I) { return removeCommonInstructionsIn(I->getParent(), I); }
 
 // TODO: Change DOMTREE Implementation using dominance.h
 DomTreeNodeBase<BasicBlock> *getDomTree(Instruction *I) {
@@ -320,34 +317,32 @@ DomTreeNodeBase<BasicBlock> *getDomTree(Instruction *I) {
 }
 
 int removeCommonInstInDominatedBlocks(Instruction *I) {
-  int instructionsRemoved = 0;
+
   auto *Node = getDomTree(I);
   DomTreeNodeBase<BasicBlock>::iterator it, end;
   for (it = Node->begin(), end = Node->end(); it != end; it++) {
     BasicBlock *bb_next = (*it)->getBlock(); // get each bb it immediately adominates
-    // Iterate over all instructions in bb_next
-    instructionsRemoved += removeCommonInstructionsIn(bb_next, I);
+                                             // Iterate over all instructions in bb_next
+    removeCommonInstructionsIn(bb_next, I);
   }
-  return instructionsRemoved;
 }
 
 // Function which takes Instruction and returns a string
-int basicCSEPass(Instruction *I) {
-  int instructionsRemoved = 0;
+void basicCSEPass(BasicBlock::iterator &inputIterator) {
+  auto *I = &*inputIterator;
   // Defensive checks, Early exit
   if (shouldCSEworkOnInstruction(I)) {
+    // TODO: Change DOMTREE Implementation using dominance.h
+    // TODO: Iterate from the current instruction to the end of the basic block, not from the beginning
     // Remove common instructions in the same basic block
-    instructionsRemoved += removeCommonInstructionsInCurrentBlock(I);
+    removeCommonInstructionsIn(I->getParent(), I);
 
     // Remove common instructions in the same function, next block
-    instructionsRemoved += removeCommonInstInDominatedBlocks(I);
+    removeCommonInstInDominatedBlocks(I);
   }
-  return instructionsRemoved;
 }
 
-int eliminateRedundantLoads(LoadInst *loadInst, BasicBlock::iterator &inputIterator) {
-  int instructionsRemoved = 0;
-
+void eliminateRedundantLoads(LoadInst *loadInst, BasicBlock::iterator &inputIterator) {
   auto *bb = inputIterator->getParent();
   inputIterator++;
   for (auto iterator = inputIterator; iterator != bb->end();) {
@@ -359,23 +354,22 @@ int eliminateRedundantLoads(LoadInst *loadInst, BasicBlock::iterator &inputItera
       nextInst->replaceAllUsesWith(loadInst);
       nextInst->eraseFromParent();
       CSE_Rload++;
-      instructionsRemoved++;
     }
     if (nextInst->getOpcode() == Instruction::Store) {
       break;
     }
   }
-  return instructionsRemoved;
 }
 
 /*
 Eliminate redundant stores and loads followed by a load
+TODO: Call instructions: You should treat call instructions as stores to an unknown and possibly same address as S or L
 @params *storeInst: StoreInst to be worked on
 @params &originalIterator: Iterator to the store instruction
-@returns int: Number of instructions removed
+@returns void: Just runs function
  */
-int eliminateRedundantStores(StoreInst *storeInst, BasicBlock::iterator &originalIterator) {
-  int instructionsRemoved = 0;
+void eliminateRedundantStores(StoreInst *storeInst, BasicBlock::iterator &originalIterator) {
+
   auto storedValue = storeInst->getValueOperand();
   auto storedAddress = storeInst->getPointerOperand();
 
@@ -414,5 +408,5 @@ int eliminateRedundantStores(StoreInst *storeInst, BasicBlock::iterator &origina
     copyIterator++;
   }
 next_store:
-  return instructionsRemoved;
+  return;
 }
