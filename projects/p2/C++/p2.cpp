@@ -5,8 +5,6 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-#include "dominance.cpp"
-
 #include "llvm-c/Core.h"
 
 #include "llvm/ADT/Statistic.h"
@@ -220,6 +218,14 @@ bool shouldCSEworkOnInstruction(Instruction *I) {
   case Instruction::CallBr:
   case Instruction::Alloca:
   case Instruction::FCmp:
+  case Instruction::ICmp:
+  case Instruction::GetElementPtr:
+// Try
+  // case Instruction::ExtractElement:
+  // case Instruction::InsertElement:
+  // case Instruction::ShuffleVector:
+  // case Instruction::ExtractValue:
+  // case Instruction::InsertValue:
     return false;
   }
   return true;
@@ -298,15 +304,6 @@ void removeCommonInstructionsIn(BasicBlock::iterator iterator, BasicBlock *bb, I
   for (auto instIter = iterator; instIter != bb->end();) {
     Instruction *nextInstruction = &*instIter;
     instIter++;
-    auto opcode = nextInstruction->getOpcode();
-    // If opcode is Store or Load or GetElementPtr or ICmp or FCmp or ExtractElement or InsertElement or ShuffleVector or ExtractValue or
-    // InsertValue, return
-    if (opcode == Instruction::Store || opcode == Instruction::Load || opcode == Instruction::GetElementPtr ||
-        opcode == Instruction::ICmp || opcode == Instruction::FCmp || opcode == Instruction::ExtractElement ||
-        opcode == Instruction::InsertElement || opcode == Instruction::ShuffleVector || opcode == Instruction::ExtractValue ||
-        opcode == Instruction::InsertValue) {
-      return;
-    }
 
     if (I != nextInstruction && isLiteralMatch(I, nextInstruction)) {
       nextInstruction->replaceAllUsesWith(I);
@@ -386,7 +383,6 @@ void eliminateRedundantStores(StoreInst *storeInst, BasicBlock::iterator &origin
     // Get next instruction
     Instruction *nextInst = &*copyIterator;
     auto nextLoad = dyn_cast<LoadInst>(nextInst);
-    // auto isLoad = nextInst->getOpcode() == Instruction::Load;
     auto loadIsNotVolatile = !nextInst->isVolatile();
 
     if (nextLoad && loadIsNotVolatile && nextLoad->getPointerOperand() == storeInst->getPointerOperand() &&
@@ -408,6 +404,7 @@ void eliminateRedundantStores(StoreInst *storeInst, BasicBlock::iterator &origin
       break;
     }
     if (nextLoad || nextStore) {
+      // TODO: or any instruction with a side-effec
       break;
     }
     copyIterator++;
