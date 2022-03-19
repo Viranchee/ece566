@@ -144,10 +144,6 @@ static llvm::Statistic CSELdElim = {"", "CSELdElim", "CSE redundant loads"};
 static llvm::Statistic CSEStore2Load = {"", "CSEStore2Load", "CSE forwarded store to load"};
 static llvm::Statistic CSEStElim = {"", "CSEStElim", "CSE redundant stores"};
 
-static llvm::Statistic CSEBasic = {"", "CSEBasic", "CSE Basic "};
-static llvm::Statistic CSE_Rload = {"", "CSE_Rload", "CSE_Rload "};
-static llvm::Statistic CSE_RStore = {"", "CSE_RStore", "CSE_RStore "};
-
 // Function Signatures
 bool isDead(Instruction &I);
 void basicCSEPass(BasicBlock::iterator &inputIterator);
@@ -300,7 +296,7 @@ void removeCommonInstructionsIn(BasicBlock *bb, Instruction *I) {
     if (I != nextInstruction && isLiteralMatch(I, nextInstruction)) {
       nextInstruction->replaceAllUsesWith(I);
       nextInstruction->eraseFromParent();
-      CSEBasic++;
+      CSEElim++;
     }
   }
 }
@@ -352,7 +348,7 @@ void eliminateRedundantLoads(LoadInst *loadInst, BasicBlock::iterator &inputIter
         loadInst->getOperand(0) == nextInst->getOperand(0)) {
       nextInst->replaceAllUsesWith(loadInst);
       nextInst->eraseFromParent();
-      CSE_Rload++;
+      CSELdElim++;
     }
     if (nextInst->getOpcode() == Instruction::Store) {
       break;
@@ -396,7 +392,7 @@ void eliminateRedundantStores(StoreInst *storeInst, BasicBlock::iterator &origin
       copyIterator++;
       originalIterator++;
       storeInst->eraseFromParent();
-      CSE_RStore++;
+      CSEStElim++;
       // TODO: Experiment next_store and continue
       goto next_store;
       // continue;
