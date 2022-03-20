@@ -227,9 +227,7 @@ bool shouldCSEworkOnInstruction(Instruction *I) {
 }
 
 bool sameOpcode(Instruction *I1, Instruction *I2) { return I1->getOpcode() == I2->getOpcode(); }
-
 bool sameType(Instruction *I1, Instruction *I2) { return I1->getType() == I2->getType(); }
-
 bool sameOperands(Instruction *I1, Instruction *I2) {
 
   auto numOperands = I1->getNumOperands();
@@ -374,6 +372,13 @@ void eliminateRedundantLoads(LoadInst *loadInst, BasicBlock::iterator &inputIter
   }
 }
 
+bool sameAddress(StoreInst *i1, StoreInst *i2) { return i1->getPointerOperand() == i2->getPointerOperand(); }
+bool sameValue(StoreInst *i1, StoreInst *i2) { return i1->getValueOperand() == i2->getValueOperand(); }
+bool sameDataType(StoreInst *i1, StoreInst *i2) { return i1->getValueOperand()->getType() == i2->getValueOperand()->getType(); }
+
+bool sameAddress(StoreInst *i1, LoadInst *i2) { return i1->getPointerOperand() == i2->getPointerOperand(); }
+bool sameDataType(StoreInst *i1, LoadInst *i2) { return i1->getValueOperand()->getType() == i2->getType(); }
+
 /*
 Eliminate redundant stores and loads followed by a load
 TODO: Call instructions: You should treat call instructions as stores to an
@@ -390,27 +395,26 @@ void eliminateRedundantStores(StoreInst *storeInst, BasicBlock::iterator &origin
     // Get next instruction
     Instruction *nextInst = &*copyIterator;
     auto nextLoad = dyn_cast<LoadInst>(nextInst);
-    auto loadIsNotVolatile = !nextInst->isVolatile();
 
-    if (nextLoad && notVolatile(nextInst) && nextLoad->getPointerOperand() == storeInst->getPointerOperand() &&
-        nextLoad->getType() == storeInst->getValueOperand()->getType()) {
+    if (nextLoad && notVolatile(nextInst) && sameAddress(storeInst, nextLoad) && sameDataType(storeInst, nextLoad)) {
       copyIterator++;
       nextInst->replaceAllUsesWith(storeInst->getValueOperand());
       nextInst->eraseFromParent();
       CSEStore2Load++;
       continue;
     }
+
     auto nextStore = dyn_cast<StoreInst>(nextInst);
-    if (nextStore && notVolatile(storeInst) && storeInst->getPointerOperand() == nextStore->getPointerOperand() &&
-        storeInst->getValueOperand()->getType() == nextStore->getValueOperand()->getType()) {
+    if (nextStore && notVolatile(storeInst) && sameAddress(storeInst, nextStore) && sameDataType(storeInst, nextStore)) {
       copyIterator++;
       originalIterator++;
       storeInst->eraseFromParent();
       CSEStElim++;
       break;
     }
-    if ((nextLoad && nextLoad->getPointerOperand() == storeInst->getPointerOperand()) ||
-        nextStore && nextStore->getPointerOperand() == storeInst->getPointerOperand()) {
+
+    if ((nextLoad && sameAddress(storeInst,nextLoad)) ||
+        nextStore && sameAddress(storeInst,nextStore)) {
       // TODO: or any instruction with a side-effec
       break;
     }
