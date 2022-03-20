@@ -219,8 +219,8 @@ bool shouldCSEworkOnInstruction(Instruction *I) {
   case Instruction::Alloca:
   case Instruction::FCmp:
   case Instruction::ICmp:
-  case Instruction::GetElementPtr:
 // Try
+  // case Instruction::GetElementPtr:
   // case Instruction::ExtractElement:
   // case Instruction::InsertElement:
   // case Instruction::ShuffleVector:
