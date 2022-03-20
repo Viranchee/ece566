@@ -219,13 +219,9 @@ bool shouldCSEworkOnInstruction(Instruction *I) {
   case Instruction::Alloca:
   case Instruction::FCmp:
   case Instruction::ICmp:
-// Try
-  // case Instruction::GetElementPtr:
-  // case Instruction::ExtractElement:
-  // case Instruction::InsertElement:
-  // case Instruction::ShuffleVector:
-  // case Instruction::ExtractValue:
-  // case Instruction::InsertValue:
+
+  case Instruction::ExtractValue:
+  case Instruction::InsertValue:
     return false;
   }
   return true;
