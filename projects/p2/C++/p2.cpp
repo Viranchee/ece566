@@ -226,15 +226,30 @@ bool shouldCSEworkOnInstruction(Instruction *I) {
   return true;
 }
 
-bool isLiteralMatch(Instruction *i1, Instruction *i2) {
-  // Defensive checks: Match Opcode, Type, #Operands, and operand order
-  if (!((i1->getOpcode() == i2->getOpcode()) && (i1->getType() == i2->getType()) && (i1->getNumOperands() == i2->getNumOperands()))) {
+bool sameOpcode(Instruction *I1, Instruction *I2) { return I1->getOpcode() == I2->getOpcode(); }
+
+bool sameType(Instruction *I1, Instruction *I2) { return I1->getType() == I2->getType(); }
+
+bool sameOperands(Instruction *I1, Instruction *I2) {
+
+  auto numOperands = I1->getNumOperands();
+  if (numOperands != I2->getNumOperands()) {
     return false;
   }
-  for (int i = 0; i < i1->getNumOperands(); i++) {
-    if (!(i1->getOperand(i) == i2->getOperand(i))) {
+  for (unsigned i = 0; i < numOperands; i++) {
+    if (I1->getOperand(i) != I2->getOperand(i)) {
       return false;
     }
+  }
+  return true;
+}
+
+bool notVolatile(Instruction *I) { return !I->isVolatile(); }
+
+bool isLiteralMatch(Instruction *i1, Instruction *i2) {
+  // Defensive checks: Match Opcode, Type, #Operands, and operand order
+  if (!(sameOpcode(i1, i2) && sameType(i1, i2) && sameOperands(i1, i2))) {
+    return false;
   }
   return true;
 }
@@ -348,8 +363,7 @@ void eliminateRedundantLoads(LoadInst *loadInst, BasicBlock::iterator &inputIter
     Instruction *nextInst = &*iterator;
     iterator++;
     // Print nextInst
-    if (nextInst->getOpcode() == Instruction::Load && !nextInst->isVolatile() && loadInst->getType() == nextInst->getType() &&
-        loadInst->getOperand(0) == nextInst->getOperand(0)) {
+    if (sameOpcode(loadInst, nextInst) && notVolatile(nextInst) && sameType(loadInst, nextInst) && sameOperands(loadInst, nextInst)) {
       nextInst->replaceAllUsesWith(loadInst);
       nextInst->eraseFromParent();
       CSELdElim++;
@@ -378,7 +392,7 @@ void eliminateRedundantStores(StoreInst *storeInst, BasicBlock::iterator &origin
     auto nextLoad = dyn_cast<LoadInst>(nextInst);
     auto loadIsNotVolatile = !nextInst->isVolatile();
 
-    if (nextLoad && loadIsNotVolatile && nextLoad->getPointerOperand() == storeInst->getPointerOperand() &&
+    if (nextLoad && notVolatile(nextInst) && nextLoad->getPointerOperand() == storeInst->getPointerOperand() &&
         nextLoad->getType() == storeInst->getValueOperand()->getType()) {
       copyIterator++;
       nextInst->replaceAllUsesWith(storeInst->getValueOperand());
@@ -387,8 +401,7 @@ void eliminateRedundantStores(StoreInst *storeInst, BasicBlock::iterator &origin
       continue;
     }
     auto nextStore = dyn_cast<StoreInst>(nextInst);
-    auto initialStoreNotVolatile = !storeInst->isVolatile();
-    if (nextStore && initialStoreNotVolatile && storeInst->getPointerOperand() == nextStore->getPointerOperand() &&
+    if (nextStore && notVolatile(storeInst) && storeInst->getPointerOperand() == nextStore->getPointerOperand() &&
         storeInst->getValueOperand()->getType() == nextStore->getValueOperand()->getType()) {
       copyIterator++;
       originalIterator++;
@@ -396,8 +409,13 @@ void eliminateRedundantStores(StoreInst *storeInst, BasicBlock::iterator &origin
       CSEStElim++;
       break;
     }
-    if (nextLoad || nextStore) {
+    if ((nextLoad && nextLoad->getPointerOperand() == storeInst->getPointerOperand()) ||
+        nextStore && nextStore->getPointerOperand() == storeInst->getPointerOperand()) {
       // TODO: or any instruction with a side-effec
+      break;
+    }
+
+    if (nextLoad || nextStore) {
       break;
     }
     copyIterator++;
