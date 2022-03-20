@@ -192,8 +192,6 @@ static void CommonSubexpressionElimination(Module *M) {
           eliminateRedundantStores(storeInst, instIter);
         }
 
-        // TODO: Test functions in Dominance.cpp
-
         if (instIter == tempIter) {
           instIter++;
         }
@@ -322,7 +320,6 @@ DomTreeNodeBase<BasicBlock> *getDomTree(Instruction *I) {
 }
 
 void removeCommonInstInDominatedBlocks(Instruction *I) {
-
   auto *Node = getDomTree(I);
   DomTreeNodeBase<BasicBlock>::iterator it, end;
   for (it = Node->begin(), end = Node->end(); it != end; it++) {
@@ -339,7 +336,6 @@ void basicCSEPass(BasicBlock::iterator &inputIterator) {
   if (shouldCSEworkOnInstruction(I)) {
     // Remove common instructions in the same basic block
     removeCommonInstructionsIn(inputIterator, I->getParent(), I);
-
     // Remove common instructions in the same function, next block
     removeCommonInstInDominatedBlocks(I);
   }
