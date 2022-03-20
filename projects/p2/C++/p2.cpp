@@ -219,10 +219,11 @@ bool shouldCSEworkOnInstruction(Instruction *I) {
   case Instruction::Alloca:
   case Instruction::FCmp:
   case Instruction::ICmp:
-
   case Instruction::ExtractValue:
   case Instruction::InsertValue:
     return false;
+  default:
+    break;
   }
   return true;
 }
