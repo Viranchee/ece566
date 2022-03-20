@@ -148,7 +148,7 @@ static llvm::Statistic CSEStElim = {"", "CSEStElim", "CSE redundant stores"};
 bool isDead(Instruction &I);
 void basicCSEPass(BasicBlock::iterator &inputIterator);
 void eliminateRedundantLoads(LoadInst *loadInst, BasicBlock::iterator &inputIterator);
-void eliminateRedundantStores(StoreInst *storeInst, BasicBlock::iterator &originalIterator);
+void eliminateRedundantStoreCall(Instruction *storeCall, BasicBlock::iterator &originalIterator);
 
 static void CommonSubexpressionElimination(Module *M) {
 
@@ -187,9 +187,8 @@ static void CommonSubexpressionElimination(Module *M) {
         }
 
         // Optimization 3: Eliminate Redundant Stores
-        if (I->getOpcode() == Instruction::Store) {
-          StoreInst *storeInst = cast<StoreInst>(I);
-          eliminateRedundantStores(storeInst, instIter);
+        if (I->getOpcode() == Instruction::Store || I->getOpcode() == Instruction::Call) {
+          eliminateRedundantStoreCall(I, instIter);
         }
 
         if (instIter == tempIter) {
@@ -312,8 +311,7 @@ void removeCommonInstructionsIn(BasicBlock::iterator iterator, BasicBlock *bb, I
   for (auto instIter = iterator; instIter != bb->end();) {
     Instruction *nextInstruction = &*instIter;
     instIter++;
-
-    if (I != nextInstruction && isLiteralMatch(I, nextInstruction)) {
+    if (I != nextInstruction && I->isIdenticalTo(nextInstruction)) {
       nextInstruction->replaceAllUsesWith(I);
       nextInstruction->eraseFromParent();
       CSEElim++;
@@ -321,7 +319,6 @@ void removeCommonInstructionsIn(BasicBlock::iterator iterator, BasicBlock *bb, I
   }
 }
 
-// TODO: Change DOMTREE Implementation using dominance.h
 DomTreeNodeBase<BasicBlock> *getDomTree(Instruction *I) {
   auto *bb = I->getParent();
   auto *F = bb->getParent();
@@ -387,7 +384,9 @@ unknown and possibly same address as S or L
 @params &originalIterator: Iterator to the store instruction
 @returns void: Just runs function
  */
-void eliminateRedundantStores(StoreInst *storeInst, BasicBlock::iterator &originalIterator) {
+void eliminateRedundantStoreCall(Instruction *storeCall, BasicBlock::iterator &originalIterator) {
+  auto storeInst = dyn_cast<StoreInst>(storeCall);
+
   auto copyIterator = originalIterator;
   BasicBlock *bb = copyIterator->getParent();
   copyIterator++;
@@ -395,31 +394,22 @@ void eliminateRedundantStores(StoreInst *storeInst, BasicBlock::iterator &origin
     // Get next instruction
     Instruction *nextInst = &*copyIterator;
     auto nextLoad = dyn_cast<LoadInst>(nextInst);
+    auto nextStore = dyn_cast<StoreInst>(nextInst);
 
-    if (nextLoad && notVolatile(nextInst) && sameAddress(storeInst, nextLoad) && sameDataType(storeInst, nextLoad)) {
+    if (storeInst && nextLoad && notVolatile(nextInst) && sameAddress(storeInst, nextLoad) && sameDataType(storeInst, nextLoad)) {
       copyIterator++;
       nextInst->replaceAllUsesWith(storeInst->getValueOperand());
       nextInst->eraseFromParent();
       CSEStore2Load++;
       continue;
-    }
-
-    auto nextStore = dyn_cast<StoreInst>(nextInst);
-    if (nextStore && notVolatile(storeInst) && sameAddress(storeInst, nextStore) && sameDataType(storeInst, nextStore)) {
+    } else if (storeInst && nextStore && notVolatile(storeInst) && sameAddress(storeInst, nextStore) &&
+               sameDataType(storeInst, nextStore)) {
       copyIterator++;
       originalIterator++;
       storeInst->eraseFromParent();
       CSEStElim++;
       break;
-    }
-
-    if ((nextLoad && sameAddress(storeInst,nextLoad)) ||
-        nextStore && sameAddress(storeInst,nextStore)) {
-      // TODO: or any instruction with a side-effec
-      break;
-    }
-
-    if (nextLoad || nextStore) {
+    } else if (nextLoad || nextStore || nextInst->mayHaveSideEffects()) {
       break;
     }
     copyIterator++;
