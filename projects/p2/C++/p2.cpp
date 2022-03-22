@@ -209,8 +209,7 @@ static void CommonSubexpressionElimination(Module *M) {
         }
 
         // Optimization 3: Eliminate Redundant Stores
-        if (I->getOpcode() == Instruction::Store ||
-            I->getOpcode() == Instruction::Call) {
+        if (I->getOpcode() == Instruction::Store) {
           eliminateRedundantStoreCall(I, instIter);
         }
 
@@ -396,6 +395,11 @@ void basicCSEPass(BasicBlock::iterator &inputIterator) {
   }
 }
 
+bool isCallOrCallBr(Instruction *I) {
+  return I->getOpcode() == Instruction::Call ||
+         I->getOpcode() == Instruction::CallBr;
+}
+
 void eliminateRedundantLoads(LoadInst *loadInst,
                              BasicBlock::iterator &inputIterator) {
   auto *bb = inputIterator->getParent();
@@ -410,7 +414,8 @@ void eliminateRedundantLoads(LoadInst *loadInst,
       nextInst->eraseFromParent();
       CSELdElim++;
     }
-    if (nextInst->getOpcode() == Instruction::Store) {
+    if (nextInst->getOpcode() == Instruction::Store ||
+        isCallOrCallBr(nextInst)) {
       break;
     }
   }
@@ -469,7 +474,8 @@ void eliminateRedundantStoreCall(Instruction *storeCall,
       storeInst->eraseFromParent();
       CSEStElim++;
       break;
-    } else if (nextLoad || nextStore || nextInst->mayHaveSideEffects()) {
+    } else if (nextLoad || nextStore || nextInst->mayHaveSideEffects() ||
+               isCallOrCallBr(nextInst)) {
       break;
     }
     copyIterator++;
