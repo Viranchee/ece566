@@ -1,9 +1,8 @@
 .cache
 .idea
-.vscode
 experiment
 docker
-cmake*
+cmake-build-*
 build
 wolfbench
 p2-test
