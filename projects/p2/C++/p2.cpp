@@ -239,7 +239,7 @@ static void CommonSubexpressionElimination(Module *M) {
 
 bool shouldCSEworkOnInstruction(Instruction *I) {
   // Early exit
-  if (I->isTerminator()) {
+  if (I->isTerminator() || !I->isSafeToRemove() || I->mayHaveSideEffects()) {
     return false;
   }
   auto opcode = I->getOpcode();
