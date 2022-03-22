@@ -220,6 +220,19 @@ static void CommonSubexpressionElimination(Module *M) {
       }
     }
   }
+
+  // Print out statistics
+  errs() << "STATS:\n";
+  errs() << "CSE Dead:\t" << CSEDead << "\n";
+  errs() << "CSE Elim:\t" << CSEElim << "\n";
+  errs() << "CSE Simplify:\t" << CSESimplify << "\n";
+  errs() << "CSE LdElim:\t" << CSELdElim << "\n";
+  errs() << "CSE Store2Load:\t" << CSEStore2Load << "\n";
+  errs() << "CSE StElim:\t" << CSEStElim << "\n";
+  errs() << "CSE Total:\t"
+         << CSEDead + CSEElim + CSESimplify + CSELdElim + CSEStore2Load +
+                CSEStElim
+         << "\n";
 }
 
 // Implementation
