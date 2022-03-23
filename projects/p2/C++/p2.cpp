@@ -170,7 +170,19 @@ void eliminateRedundantLoads(LoadInst *loadInst,
                              BasicBlock::iterator &inputIterator);
 void eliminateRedundantStoreCall(Instruction *storeCall,
                                  BasicBlock::iterator &originalIterator);
-
+void printStats() {
+  errs() << "STATS:\n";
+  errs() << "CSE Dead:\t" << CSEDead << "\n";
+  errs() << "CSE Elim:\t" << CSEElim << "\n";
+  errs() << "CSE Simplify:\t" << CSESimplify << "\n";
+  errs() << "CSE LdElim:\t" << CSELdElim << "\n";
+  errs() << "CSE Store2Load:\t" << CSEStore2Load << "\n";
+  errs() << "CSE StElim:\t" << CSEStElim << "\n";
+  errs() << "CSE Total:\t"
+         << CSEDead + CSEElim + CSESimplify + CSELdElim + CSEStore2Load +
+                CSEStElim
+         << "\n";
+}
 static void CommonSubexpressionElimination(Module *M) {
 
   // Iterate over all instructions in the module
@@ -220,18 +232,8 @@ static void CommonSubexpressionElimination(Module *M) {
     }
   }
 
-  // Print out statistics
-  errs() << "STATS:\n";
-  errs() << "CSE Dead:\t" << CSEDead << "\n";
-  errs() << "CSE Elim:\t" << CSEElim << "\n";
-  errs() << "CSE Simplify:\t" << CSESimplify << "\n";
-  errs() << "CSE LdElim:\t" << CSELdElim << "\n";
-  errs() << "CSE Store2Load:\t" << CSEStore2Load << "\n";
-  errs() << "CSE StElim:\t" << CSEStElim << "\n";
-  errs() << "CSE Total:\t"
-         << CSEDead + CSEElim + CSESimplify + CSELdElim + CSEStore2Load +
-                CSEStElim
-         << "\n";
+  // TODO Print out statistics
+  printStats();
 }
 
 // Implementation
@@ -250,9 +252,6 @@ bool shouldCSEworkOnInstruction(Instruction *I) {
   case Instruction::CallBr:
   case Instruction::Alloca:
   case Instruction::FCmp:
-  case Instruction::ICmp:
-  case Instruction::ExtractValue:
-  case Instruction::InsertValue:
     return false;
   default:
     break;
@@ -281,14 +280,6 @@ bool sameOperands(Instruction *I1, Instruction *I2) {
 }
 
 bool notVolatile(Instruction *I) { return !I->isVolatile(); }
-
-bool isLiteralMatch(Instruction *i1, Instruction *i2) {
-  // Defensive checks: Match Opcode, Type, #Operands, and operand order
-  if (!(sameOpcode(i1, i2) && sameType(i1, i2) && sameOperands(i1, i2))) {
-    return false;
-  }
-  return true;
-}
 
 bool isDead(Instruction &I) {
   // Check necessary requirements, otherwise return false
@@ -395,9 +386,8 @@ void basicCSEPass(BasicBlock::iterator &inputIterator) {
   }
 }
 
-bool isCallOrCallBr(Instruction *I) {
-  return I->getOpcode() == Instruction::Call ||
-         I->getOpcode() == Instruction::CallBr;
+bool isCall(Instruction *I) {
+  return I->getOpcode() == Instruction::Call;
 }
 
 void eliminateRedundantLoads(LoadInst *loadInst,
@@ -414,8 +404,7 @@ void eliminateRedundantLoads(LoadInst *loadInst,
       nextInst->eraseFromParent();
       CSELdElim++;
     }
-    if (nextInst->getOpcode() == Instruction::Store ||
-        isCallOrCallBr(nextInst)) {
+    if (nextInst->getOpcode() == Instruction::Store) {
       break;
     }
   }
@@ -474,8 +463,7 @@ void eliminateRedundantStoreCall(Instruction *storeCall,
       storeInst->eraseFromParent();
       CSEStElim++;
       break;
-    } else if (nextLoad || nextStore || nextInst->mayHaveSideEffects() ||
-               isCallOrCallBr(nextInst)) {
+    } else if (nextLoad || nextStore || isCall(nextInst)) {
       break;
     }
     copyIterator++;
