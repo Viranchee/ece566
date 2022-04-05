@@ -158,6 +158,19 @@ static void print_csv_file(std::string outputfile) {
 }
 
 static llvm::Statistic NumLoops = {"", "NumLoops", "number of loops analyzed"};
+static llvm::Statistic NumLoopsNoStore = {"",
+                                          "NumLoopsNoStore",
+                                          "number of loops without stores"};
+static llvm::Statistic NumLoopsNoLoad = {"",
+                                         "NumLoopsNoLoad",
+                                         "number of loops without loads"};
+static llvm::Statistic NumLoopsNoStoreWithLoad = {
+    "",
+    "NumLoopsNoStoreWithLoad",
+    "number of loops without store but with load"};
+static llvm::Statistic NumLoopsWithCall = {"",
+                                           "NumLoopsWithCall",
+                                           "number of loops with calls"};
 // add other stats
 static llvm::Statistic LICMBasic = {"",
                                     "LICMBasic",
