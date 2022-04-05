@@ -1,0 +1,8 @@
+.cache
+.idea
+experiment
+docker
+cmake-build-*
+build
+wolfbench
+p2-test
