@@ -10,11 +10,18 @@
 #include "llvm/ADT/Statistic.h"
 #include "llvm/ADT/StringSet.h"
 #include "llvm/Analysis/InstructionSimplify.h"
+#include "llvm/Analysis/LoopInfo.h"
 #include "llvm/Bitcode/BitcodeReader.h"
 #include "llvm/Bitcode/BitcodeWriter.h"
+#include "llvm/IR/BasicBlock.h"
+#include "llvm/IR/Dominators.h"
+#include "llvm/IR/Function.h"
+#include "llvm/IR/GlobalVariable.h"
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/LegacyPassManager.h"
 #include "llvm/IR/Module.h"
+#include "llvm/IR/Type.h"
+#include "llvm/IR/Value.h"
 #include "llvm/IR/Verifier.h"
 #include "llvm/IRReader/IRReader.h"
 #include "llvm/LinkAllPasses.h"
@@ -183,6 +190,58 @@ static llvm::Statistic LICMNoPreheader = {
     "LICMNoPreheader",
     "absence of preheader prevents optimization"};
 
-static void LoopInvariantCodeMotion(Module *) {
-    // Implement this function
+static void LoopInvariantCodeMotion(Module *M) {
+    // iterate over all functions in the module
+    for (auto F = M->begin(); F != M->end(); F++) {
+        // Get loop info for this function
+        auto *LI = new LoopInfoBase<BasicBlock, Loop>();
+        auto DT = new DominatorTreeBase<BasicBlock, false>();
+        auto func = &*F;
+        DT->recalculate(*func);
+        LI->analyze(*DT);
+
+        // iterate over all loops in the function
+        for (auto li : *LI) {
+            NumLoops++;
+            uint num_stores = 0;
+            uint num_loads = 0;
+            uint num_calls = 0;
+            // iterate over all blocks in the loop
+            for (auto bb : li->blocks()) {
+                // iterate over all instructions in the block
+                for (auto i = bb->begin(); i != bb->end(); i++) {
+                    Instruction &I = *i;
+                    // if the instruction is a store, increment num_stores
+                    if (isa<StoreInst>(&I)) {
+                        num_stores++;
+                    }
+                    // if the instruction is a load, increment num_loads
+                    if (isa<LoadInst>(&I)) {
+                        num_loads++;
+                    }
+                    // if the instruction is a call, increment num_calls
+                    if (isa<CallInst>(&I)) {
+                        num_calls++;
+                    }
+                }
+            }
+            // if the loop has no stores, increment NumLoopsNoStore
+            if (num_stores == 0) {
+                NumLoopsNoStore++;
+            }
+            // if the loop has no loads, increment NumLoopsNoLoad
+            if (num_loads == 0) {
+                NumLoopsNoLoad++;
+            }
+            // if the loop has no stores and no loads, but only stores,
+            // increment NumLoopsNoStoreWithLoad
+            if (num_stores == 0 && num_loads > 0) {
+                NumLoopsNoStoreWithLoad++;
+            }
+            // if the loop has calls, increment NumLoopsNoCall
+            if (num_calls > 0) {
+                NumLoopsWithCall++;
+            }
+        }
+    }
 }
