@@ -1,0 +1,14 @@
+---
+BasedOnStyle: LLVM
+AccessModifierOffset: '0'
+AlignOperands: 'true'
+AlignTrailingComments: 'true'
+AllowAllArgumentsOnNextLine: 'true'
+AllowAllParametersOfDeclarationOnNextLine: 'false'
+AllowShortBlocksOnASingleLine: 'false'
+BinPackArguments: 'false'
+BinPackParameters: 'false'
+TabWidth: '4'
+IndentWidth: '4'
+
+...
