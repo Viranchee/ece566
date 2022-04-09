@@ -1,5 +1,5 @@
 # Build directory variable
-BUILD_DIR=m1
+BUILD_DIR=build
 P3_TEST_DIR=p3-test
 # Go in build directory, and run 'make clean' and 'make'
 cd $BUILD_DIR
