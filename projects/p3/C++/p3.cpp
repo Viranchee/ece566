@@ -33,7 +33,7 @@
 
 using namespace llvm;
 
-static void LoopInvariantCodeMotion(Module *);
+static void LoopInvariantCodeMotion(Module *M);
 
 static void summarize(Module *M);
 static void print_csv_file(std::string outputfile);
@@ -194,12 +194,12 @@ bool canMoveOutOfLoop(Loop *L, LoadInst *load) {
     if (load->isVolatile())
         return false;
     Value *loadAddr = load->getPointerOperand();
-    
+
     bool isAddressGlobal = isa<GlobalVariable>(loadAddr);
     bool isAddressAlloca = isa<AllocaInst>(loadAddr);
     bool isAddressLoopInvariant = L->isLoopInvariant(loadAddr);
     bool hasStoreInLoop = false;
-    bool addressAllocaInLoop = false; // TODO
+    bool addressAllocaInLoop = false;
 
     // Check if there are users of the loadAddr in the loop
     for (auto u = loadAddr->user_begin(); u != loadAddr->user_end(); u++) {
@@ -208,43 +208,33 @@ bool canMoveOutOfLoop(Loop *L, LoadInst *load) {
             switch (user->getOpcode()) {
             case Instruction::Store:
                 hasStoreInLoop = true;
-                if (cast<StoreInst>(user)->getPointerOperand() == loadAddr) {
-                } else {
-                    errs() << "The store should be having same addres, why is it different. The instruction is:\n";
-                    errs() << *user << "\n";
-                    errs() << "The load is:\n";
-                    errs() << *load << "\n";
-                    errs() << "The loop is:\n";
-                    errs() << *L << "\n";
-                    errs() << "__END__\n";
-                }
-                // hasStoreInLoop = true;
                 break;
             case Instruction::Alloca:
                 // TODO: Is this the correct way? Does Alloca come in def-use?
                 addressAllocaInLoop = true;
-                errs() << "\n";
                 break;
             default:
                 break;
             }
-
         }
     }
 
-    // if (addr is a GlobalVariable and there are no possible stores to addr in L):
+    // if (addr is a GlobalVariable and there are no possible stores to addr in
+    // L):
     if (isAddressGlobal && !hasStoreInLoop) {
         return true;
     }
 
-    // if (addr is an AllocaInst and no possible stores to addr in L and AllocaInst is not inside the loop):
+    // if (addr is an AllocaInst and no possible stores to addr in L and
+    // AllocaInst is not inside the loop):
     if (isAddressAlloca && !hasStoreInLoop && addressAllocaInLoop) {
         return false;
     }
 
-    // if (there are no possible stores to any addr in L && addr is loop invariant && I dominates L’s exit):
+    // if (there are no possible stores to any addr in L && addr is loop
+    // invariant && I dominates L’s exit):
     // TODO: check if I dominates L’s exit
-    if (!hasStoreInLoop && isAddressLoopInvariant && true) { 
+    if (!hasStoreInLoop && isAddressLoopInvariant && true) {
         return true;
     }
     return false;
@@ -274,18 +264,20 @@ void loopInvariantCodeMotion(Loop *loop) {
             if (loop->hasLoopInvariantOperands(I)) {
                 bool madeLoopInvariant = false;
                 loop->makeLoopInvariant(I, madeLoopInvariant);
-                LICMBasic++;
+                if (madeLoopInvariant) {
+                    LICMBasic++;
+                }
             } else if (auto load = dyn_cast<LoadInst>(I)) {
-                // num_loads++;
-                // if (canMoveOutOfLoop(loop, load)) {
-                //     // Move I to preHeader
-                //     I->moveBefore(preHeader->getTerminator());
-                //     LICMLoadHoist++;
-                // }
+                num_loads++;
+                if (canMoveOutOfLoop(loop, load)) {
+                    // Move I to preHeader
+                    load->moveBefore(preHeader->getTerminator());
+                    LICMLoadHoist++;
+                }
             } else if (auto store = dyn_cast<StoreInst>(I)) {
-                // num_stores++;
+                num_stores++;
             } else if (auto call = dyn_cast<CallInst>(I)) {
-                // num_calls++;
+                num_calls++;
             }
         }
     }
@@ -298,7 +290,8 @@ void loopInvariantCodeMotion(Loop *loop) {
     if (num_loads == 0) {
         NumLoopsNoLoad++;
     }
-    // TODO: Do we need to check if the stores and loads are to the same loadAddr?
+    // TODO: Do we need to check if the stores and loads are to the same
+    // loadAddr?
     if (num_stores == 0 && num_loads > 0) {
         NumLoopsNoStoreWithLoad++;
     }
