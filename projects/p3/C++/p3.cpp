@@ -190,58 +190,139 @@ static llvm::Statistic LICMNoPreheader = {
     "LICMNoPreheader",
     "absence of preheader prevents optimization"};
 
+bool canMoveOutOfLoop(Loop *L, LoadInst *load) {
+    if (load->isVolatile())
+        return false;
+    Value *loadAddr = load->getPointerOperand();
+    
+    bool isAddressGlobal = isa<GlobalVariable>(loadAddr);
+    bool isAddressAlloca = isa<AllocaInst>(loadAddr);
+    bool isAddressLoopInvariant = L->isLoopInvariant(loadAddr);
+    bool hasStoreInLoop = false;
+    bool addressAllocaInLoop = false; // TODO
+
+    // Check if there are users of the loadAddr in the loop
+    for (auto u = loadAddr->user_begin(); u != loadAddr->user_end(); u++) {
+        Instruction *user = cast<Instruction>(*u);
+        if (L->contains(user)) {
+            switch (user->getOpcode()) {
+            case Instruction::Store:
+                hasStoreInLoop = true;
+                if (cast<StoreInst>(user)->getPointerOperand() == loadAddr) {
+                } else {
+                    errs() << "The store should be having same addres, why is it different. The instruction is:\n";
+                    errs() << *user << "\n";
+                    errs() << "The load is:\n";
+                    errs() << *load << "\n";
+                    errs() << "The loop is:\n";
+                    errs() << *L << "\n";
+                    errs() << "__END__\n";
+                }
+                // hasStoreInLoop = true;
+                break;
+            case Instruction::Alloca:
+                // TODO: Is this the correct way? Does Alloca come in def-use?
+                addressAllocaInLoop = true;
+                errs() << "\n";
+                break;
+            default:
+                break;
+            }
+
+        }
+    }
+
+    // if (addr is a GlobalVariable and there are no possible stores to addr in L):
+    if (isAddressGlobal && !hasStoreInLoop) {
+        return true;
+    }
+
+    // if (addr is an AllocaInst and no possible stores to addr in L and AllocaInst is not inside the loop):
+    if (isAddressAlloca && !hasStoreInLoop && addressAllocaInLoop) {
+        return false;
+    }
+
+    // if (there are no possible stores to any addr in L && addr is loop invariant && I dominates L’s exit):
+    // TODO: check if I dominates L’s exit
+    if (!hasStoreInLoop && isAddressLoopInvariant && true) { 
+        return true;
+    }
+    return false;
+}
+
+void loopInvariantCodeMotion(Loop *loop) {
+    NumLoops++;
+    auto preHeader = loop->getLoopPreheader();
+    if (!preHeader) {
+        LICMNoPreheader++;
+        return;
+    }
+    uint num_stores = 0;
+    uint num_loads = 0;
+    uint num_calls = 0;
+
+    auto blocks = loop->getBlocks();
+    if (blocks.size() == 0) {
+        return;
+    }
+
+    for (auto basicBlock : blocks) {
+        for (auto instrPtr = basicBlock->begin();
+             instrPtr != basicBlock->end();) {
+            Instruction *I = &*instrPtr;
+            instrPtr++;
+            if (loop->hasLoopInvariantOperands(I)) {
+                bool madeLoopInvariant = false;
+                loop->makeLoopInvariant(I, madeLoopInvariant);
+                LICMBasic++;
+            } else if (auto load = dyn_cast<LoadInst>(I)) {
+                // num_loads++;
+                // if (canMoveOutOfLoop(loop, load)) {
+                //     // Move I to preHeader
+                //     I->moveBefore(preHeader->getTerminator());
+                //     LICMLoadHoist++;
+                // }
+            } else if (auto store = dyn_cast<StoreInst>(I)) {
+                // num_stores++;
+            } else if (auto call = dyn_cast<CallInst>(I)) {
+                // num_calls++;
+            }
+        }
+    }
+    if (num_calls) {
+        NumLoopsWithCall++;
+    }
+    if (num_stores == 0) {
+        NumLoopsNoStore++;
+    }
+    if (num_loads == 0) {
+        NumLoopsNoLoad++;
+    }
+    // TODO: Do we need to check if the stores and loads are to the same loadAddr?
+    if (num_stores == 0 && num_loads > 0) {
+        NumLoopsNoStoreWithLoad++;
+    }
+}
+
 static void LoopInvariantCodeMotion(Module *M) {
     // iterate over all functions in the module
     for (auto F = M->begin(); F != M->end(); F++) {
         // Get loop info for this function
-        auto *LI = new LoopInfoBase<BasicBlock, Loop>();
+        auto *loops = new LoopInfoBase<BasicBlock, Loop>();
         auto DT = new DominatorTreeBase<BasicBlock, false>();
         auto func = &*F;
+
+        // Check if func has a body
+        if (func->empty()) {
+            continue;
+        }
+
         DT->recalculate(*func);
-        LI->analyze(*DT);
+        loops->analyze(*DT);
 
         // iterate over all loops in the function
-        for (auto li : *LI) {
-            NumLoops++;
-            uint num_stores = 0;
-            uint num_loads = 0;
-            uint num_calls = 0;
-            // iterate over all blocks in the loop
-            for (auto bb : li->blocks()) {
-                // iterate over all instructions in the block
-                for (auto i = bb->begin(); i != bb->end(); i++) {
-                    Instruction &I = *i;
-                    // if the instruction is a store, increment num_stores
-                    if (isa<StoreInst>(&I)) {
-                        num_stores++;
-                    }
-                    // if the instruction is a load, increment num_loads
-                    if (isa<LoadInst>(&I)) {
-                        num_loads++;
-                    }
-                    // if the instruction is a call, increment num_calls
-                    if (isa<CallInst>(&I)) {
-                        num_calls++;
-                    }
-                }
-            }
-            // if the loop has no stores, increment NumLoopsNoStore
-            if (num_stores == 0) {
-                NumLoopsNoStore++;
-            }
-            // if the loop has no loads, increment NumLoopsNoLoad
-            if (num_loads == 0) {
-                NumLoopsNoLoad++;
-            }
-            // if the loop has no stores and no loads, but only stores,
-            // increment NumLoopsNoStoreWithLoad
-            if (num_stores == 0 && num_loads > 0) {
-                NumLoopsNoStoreWithLoad++;
-            }
-            // if the loop has calls, increment NumLoopsNoCall
-            if (num_calls > 0) {
-                NumLoopsWithCall++;
-            }
+        for (auto loop : *loops) {
+            loopInvariantCodeMotion(loop);
         }
     }
 }
