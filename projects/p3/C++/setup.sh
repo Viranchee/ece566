@@ -10,6 +10,12 @@ make
 cd ..
 
 # make 'p3-test' directory, configure it with 'wolfbench/configure'
+chmod +x ~/ece566/wolfbench/configure
+chmod +x ~/ece566/wolfbench/*.py
+chmod +x ~/ece566/wolfbench/*.sh
+chmod +x ~/ece566/wolfbench/*.sh
+chmod +x *.sh
+
 mkdir p3-test
 cd p3-test
-/Users/v/ece566/wolfbench/configure --enable-customtool=/Users/v/ece566/projects/p3/C++/build/p3
+~/ece566/wolfbench/configure --enable-customtool=~/ece566/projects/p3/C++/build/p3

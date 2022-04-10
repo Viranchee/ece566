@@ -261,12 +261,11 @@ void loopInvariantCodeMotion(Loop *loop) {
              instrPtr != basicBlock->end();) {
             Instruction *I = &*instrPtr;
             instrPtr++;
-            if (loop->hasLoopInvariantOperands(I)) {
-                bool madeLoopInvariant = false;
-                loop->makeLoopInvariant(I, madeLoopInvariant);
-                if (madeLoopInvariant) {
-                    LICMBasic++;
-                }
+            bool changed = false;
+            loop->makeLoopInvariant(I, changed);
+            if (changed) {
+                LICMBasic++;
+                continue;
             } else if (auto load = dyn_cast<LoadInst>(I)) {
                 num_loads++;
                 if (canMoveOutOfLoop(loop, load)) {
@@ -319,3 +318,11 @@ static void LoopInvariantCodeMotion(Module *M) {
         }
     }
 }
+
+/*
+TODOS:
+1. Run the passes on wolfbench
+2. Add the different flags and run the passes on the different flags
+
+
+*/
