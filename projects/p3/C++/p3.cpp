@@ -191,15 +191,15 @@ static llvm::Statistic LICMNoPreheader = {
     "absence of preheader prevents optimization"};
 
 DomTreeNodeBase<BasicBlock> *getDomTree(Instruction *I) {
-  auto *bb = I->getParent();
-  auto *F = bb->getParent();
-  DominatorTreeBase<BasicBlock, false> *DT =
-      new DominatorTreeBase<BasicBlock, false>();
-  DT->recalculate(*F); // F is Function*. Use one DominatorTreeBase and
-                       // recalculate tree for each function you visit
-  DomTreeNodeBase<BasicBlock> *Node =
-      DT->getNode(bb); // get Node from some basic block*
-  return Node;
+    auto *bb = I->getParent();
+    auto *F = bb->getParent();
+    DominatorTreeBase<BasicBlock, false> *DT =
+        new DominatorTreeBase<BasicBlock, false>();
+    DT->recalculate(*F); // F is Function*. Use one DominatorTreeBase and
+                         // recalculate tree for each function you visit
+    DomTreeNodeBase<BasicBlock> *Node =
+        DT->getNode(bb); // get Node from some basic block*
+    return Node;
 }
 
 bool instructionDominatesLoopsExit(Instruction *I, Loop *L) {
@@ -228,32 +228,32 @@ bool canMoveOutOfLoop(Loop *L, LoadInst *load) {
     bool addressAllocaInLoop = false;
 
     for (auto blocks : L->blocks()) {
-        for (auto instrIter = blocks->begin(); instrIter != blocks->end(); instrIter++) {
+        for (auto instrIter = blocks->begin(); instrIter != blocks->end();
+             instrIter++) {
             Instruction *instr = &*instrIter;
             switch (instr->getOpcode()) {
-                case Instruction::Store: {
-                    StoreInst *store = cast<StoreInst>(instr);
-                    if (store->getPointerOperand() == loadAddr) {
-                        hasStoreToAddress = true;
-                    }
-                    break;
+            case Instruction::Store: {
+                StoreInst *store = cast<StoreInst>(instr);
+                if (store->getPointerOperand() == loadAddr) {
+                    hasStoreToAddress = true;
                 }
-                case Instruction::Load: {
-                    LoadInst *load = cast<LoadInst>(instr);
-                    if (load->getPointerOperand() == loadAddr) {
-                        hasAnyStore = true;
-                    }
-                    break;
-                }
-                case Instruction::Call: {
-                    break;
-                }
-                default:
-                    break;
+                break;
             }
-        }    
+            case Instruction::Load: {
+                LoadInst *load = cast<LoadInst>(instr);
+                if (load->getPointerOperand() == loadAddr) {
+                    hasAnyStore = true;
+                }
+                break;
+            }
+            case Instruction::Call: {
+                break;
+            }
+            default:
+                break;
+            }
+        }
     }
-
 
     // if (addr is a GlobalVariable and there are no possible stores to addr in
     // L):
@@ -270,7 +270,8 @@ bool canMoveOutOfLoop(Loop *L, LoadInst *load) {
     // if (there are no possible stores to any addr in L && addr is loop
     // invariant && I dominates L’s exit):
     // TODO: check if I dominates L’s exit
-    if (!hasAnyStore && isAddressLoopInvariant && instructionDominatesLoopsExit(load, L)) {
+    if (!hasAnyStore && isAddressLoopInvariant &&
+        instructionDominatesLoopsExit(load, L)) {
         return true;
     }
     return false;
