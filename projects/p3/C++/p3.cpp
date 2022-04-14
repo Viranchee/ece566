@@ -190,6 +190,31 @@ static llvm::Statistic LICMNoPreheader = {
     "LICMNoPreheader",
     "absence of preheader prevents optimization"};
 
+DomTreeNodeBase<BasicBlock> *getDomTree(Instruction *I) {
+  auto *bb = I->getParent();
+  auto *F = bb->getParent();
+  DominatorTreeBase<BasicBlock, false> *DT =
+      new DominatorTreeBase<BasicBlock, false>();
+  DT->recalculate(*F); // F is Function*. Use one DominatorTreeBase and
+                       // recalculate tree for each function you visit
+  DomTreeNodeBase<BasicBlock> *Node =
+      DT->getNode(bb); // get Node from some basic block*
+  return Node;
+}
+
+bool instructionDominatesLoopsExit(Instruction *I, Loop *L) {
+    auto loopExit = L->getExitBlock();
+    auto domTree = getDomTree(I);
+    DomTreeNodeBase<BasicBlock>::iterator it, end;
+    for (it = domTree->begin(), end = domTree->end(); it != end; it++) {
+        auto block = (*it)->getBlock();
+        if (block == loopExit) {
+            return true;
+        }
+    }
+    return false;
+}
+
 bool canMoveOutOfLoop(Loop *L, LoadInst *load) {
     if (load->isVolatile())
         return false;
@@ -198,43 +223,54 @@ bool canMoveOutOfLoop(Loop *L, LoadInst *load) {
     bool isAddressGlobal = isa<GlobalVariable>(loadAddr);
     bool isAddressAlloca = isa<AllocaInst>(loadAddr);
     bool isAddressLoopInvariant = L->isLoopInvariant(loadAddr);
-    bool hasStoreInLoop = false;
+    bool hasStoreToAddress = false;
+    bool hasAnyStore = false;
     bool addressAllocaInLoop = false;
 
-    // Check if there are users of the loadAddr in the loop
-    for (auto u = loadAddr->user_begin(); u != loadAddr->user_end(); u++) {
-        Instruction *user = cast<Instruction>(*u);
-        if (L->contains(user)) {
-            switch (user->getOpcode()) {
-            case Instruction::Store:
-                hasStoreInLoop = true;
-                break;
-            case Instruction::Alloca:
-                // TODO: Is this the correct way? Does Alloca come in def-use?
-                addressAllocaInLoop = true;
-                break;
-            default:
-                break;
+    for (auto blocks : L->blocks()) {
+        for (auto instrIter = blocks->begin(); instrIter != blocks->end(); instrIter++) {
+            Instruction *instr = &*instrIter;
+            switch (instr->getOpcode()) {
+                case Instruction::Store: {
+                    StoreInst *store = cast<StoreInst>(instr);
+                    if (store->getPointerOperand() == loadAddr) {
+                        hasStoreToAddress = true;
+                    }
+                    break;
+                }
+                case Instruction::Load: {
+                    LoadInst *load = cast<LoadInst>(instr);
+                    if (load->getPointerOperand() == loadAddr) {
+                        hasAnyStore = true;
+                    }
+                    break;
+                }
+                case Instruction::Call: {
+                    break;
+                }
+                default:
+                    break;
             }
-        }
+        }    
     }
+
 
     // if (addr is a GlobalVariable and there are no possible stores to addr in
     // L):
-    if (isAddressGlobal && !hasStoreInLoop) {
+    if (isAddressGlobal && !hasStoreToAddress) {
         return true;
     }
 
     // if (addr is an AllocaInst and no possible stores to addr in L and
     // AllocaInst is not inside the loop):
-    if (isAddressAlloca && !hasStoreInLoop && addressAllocaInLoop) {
-        return false;
+    if (isAddressAlloca && !hasStoreToAddress && !addressAllocaInLoop) {
+        return true;
     }
 
     // if (there are no possible stores to any addr in L && addr is loop
     // invariant && I dominates L’s exit):
     // TODO: check if I dominates L’s exit
-    if (!hasStoreInLoop && isAddressLoopInvariant && true) {
+    if (!hasAnyStore && isAddressLoopInvariant && instructionDominatesLoopsExit(load, L)) {
         return true;
     }
     return false;
@@ -261,10 +297,12 @@ void loopInvariantCodeMotion(Loop *loop) {
              instrPtr != basicBlock->end();) {
             Instruction *I = &*instrPtr;
             instrPtr++;
-            bool changed = false;
-            loop->makeLoopInvariant(I, changed);
-            if (changed) {
-                LICMBasic++;
+            if (loop->hasLoopInvariantOperands(I)) {
+                bool changed = false;
+                loop->makeLoopInvariant(I, changed);
+                if (changed) {
+                    LICMBasic++;
+                }
                 continue;
             } else if (auto load = dyn_cast<LoadInst>(I)) {
                 num_loads++;
