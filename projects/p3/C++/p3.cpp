@@ -308,6 +308,22 @@ void loopInvariantCodeMotion(Loop *loop) {
             Instruction *I = &*instIter;
             auto copyIterator = instIter;
             instIter++;
+            switch (I->getOpcode()) {
+            case Instruction::Store: {
+                num_stores++;
+                break;
+            }
+            case Instruction::Load: {
+                num_loads++;
+                break;
+            }
+            // case Instruction::CallBr: // Does not affect output
+            case Instruction::Call:
+                num_calls++;
+                break;
+            default:
+                break;
+            }
             if (loop->hasLoopInvariantOperands(I)) {
                 bool changed = false;
                 loop->makeLoopInvariant(I, changed);
@@ -316,15 +332,15 @@ void loopInvariantCodeMotion(Loop *loop) {
                     continue;
                 }
             } else if (auto load = dyn_cast<LoadInst>(I)) {
-                num_loads++;
+                // num_loads++;
                 if (canMoveOutOfLoop(loop, copyIterator)) {
                     load->moveBefore(preHeader->getTerminator());
                     LICMLoadHoist++;
                 }
             } else if (auto store = dyn_cast<StoreInst>(I)) {
-                num_stores++;
+                // num_stores++;
             } else if (auto call = dyn_cast<CallInst>(I)) {
-                num_calls++;
+                // num_calls++;
             }
         }
     }
@@ -366,11 +382,3 @@ static void LoopInvariantCodeMotion(Module *M) {
         }
     }
 }
-
-/*
-TODOS:
-1. Run the passes on wolfbench
-2. Add the different flags and run the passes on the different flags
-
-
-*/

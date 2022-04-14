@@ -31,7 +31,7 @@ em3d.LICM.LICMLoadHoist=0.0 was within 100.0% expected within 15.0%.
 em3d.LICM check LICMLoadHoist count.
 em3d.LICM.NumLoops=8.0 was within 42.857142857142854% expected within 15.0%.
 em3d.LICM check NumLoops count.
-em3d.LICM.NumLoopsWithCall=3.0 was within 57.142857142857146% expected within 15.0%.
+em3d.LICM.NumLoopsWithCall=4.0 was within 42.857142857142854% expected within 15.0%.
 em3d.LICM check NumLoopsWithCall count.
 em3d.LICM.NumLoopsNoLoads=0.0 and is expected to be 0.
 em3d.LICM.NumLoopsNoStores=0.0 and is expected to be 0.
@@ -57,7 +57,7 @@ sql.LICM.LICMLoadHoist=0.0 was within 100.0% expected within 15.0%.
 sql.LICM check LICMLoadHoist count.
 sql.LICM.NumLoops=844.0 was within 22.14022140221402% expected within 15.0%.
 sql.LICM check NumLoops count.
-sql.LICM.NumLoopsWithCall=530.0 was within 20.777279521674142% expected within 15.0%.
+sql.LICM.NumLoopsWithCall=533.0 was within 20.328849028400597% expected within 15.0%.
 sql.LICM check NumLoopsWithCall count.
 sql.LICM.NumLoopsNoLoads=0.0 and is expected to be 0.
 sql.LICM.NumLoopsNoStores=0.0 and is expected to be 0.
@@ -68,8 +68,7 @@ fft.LICM.LICMLoadHoist=0.0 but expected to find > 1.
 fft.LICM check LICMLoadHoist count.
 fft.LICM.NumLoops=9.0 was within 25.0% expected within 15.0%.
 fft.LICM check NumLoops count.
-fft.LICM.NumLoopsWithCall=5.0 was within 28.571428571428573% expected within 15.0%.
-fft.LICM check NumLoopsWithCall count.
+fft.LICM.NumLoopsWithCall=6.0 was within 14.285714285714286% expected within 15.0%.
 fft.LICM.NumLoopsNoLoads=0.0 and is expected to be 0.
 fft.LICM.NumLoopsNoStores=0.0 and is expected to be 0.
 -----adpcm.LICM------
@@ -120,8 +119,7 @@ arm.LICM.LICMBasic=1.0 was within 0.0% expected within 15.0%.
 arm.LICM.LICMLoadHoist=0.0 was within 100.0% expected within 15.0%.
 arm.LICM check LICMLoadHoist count.
 arm.LICM.NumLoops=10.0 was within 0.0% expected within 15.0%.
-arm.LICM.NumLoopsWithCall=3.0 was within 25.0% expected within 15.0%.
-arm.LICM check NumLoopsWithCall count.
+arm.LICM.NumLoopsWithCall=4.0 was within 0.0% expected within 15.0%.
 arm.LICM.NumLoopsNoLoads=0.0 and is expected to be 0.
 arm.LICM.NumLoopsNoStores=0.0 and is expected to be 0.
 -----dijkstra.LICM------
