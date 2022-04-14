@@ -313,8 +313,8 @@ void loopInvariantCodeMotion(Loop *loop) {
                 loop->makeLoopInvariant(I, changed);
                 if (changed) {
                     LICMBasic++;
+                    continue;
                 }
-                continue;
             } else if (auto load = dyn_cast<LoadInst>(I)) {
                 num_loads++;
                 if (canMoveOutOfLoop(loop, copyIterator)) {
