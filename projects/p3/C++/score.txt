@@ -1,0 +1,164 @@
+The scoring of this test are tentative and may change.
+-----crc32.LICM------
+crc32.LICM.LICMBasic=0.0 and is expected to be 0.
+crc32.LICM.LICMLoadHoist=0.0 and is expected to be 0.
+crc32.LICM.NumLoops=3.0 was within 0.0% expected within 15.0%.
+crc32.LICM.NumLoopsWithCall=2.0 was within 0.0% expected within 15.0%.
+crc32.LICM.NumLoopsNoLoads=0.0 and is expected to be 0.
+crc32.LICM.NumLoopsNoStores=0.0 and is expected to be 0.
+-----basicmath.LICM------
+basicmath.LICM.LICMBasic=5.0 was within 37.5% expected within 15.0%.
+basicmath.LICM check LICMBasic count.
+basicmath.LICM.LICMLoadHoist=0.0 and is expected to be 0.
+basicmath.LICM.NumLoops=11.0 was within 26.666666666666668% expected within 15.0%.
+basicmath.LICM check NumLoops count.
+basicmath.LICM.NumLoopsWithCall=10.0 was within 28.571428571428573% expected within 15.0%.
+basicmath.LICM check NumLoopsWithCall count.
+basicmath.LICM.NumLoopsNoLoads=0.0 and is expected to be 0.
+basicmath.LICM.NumLoopsNoStores=0.0 and is expected to be 0.
+-----bitcount.LICM------
+bitcount.LICM.LICMBasic=0.0 and is expected to be 0.
+bitcount.LICM.LICMLoadHoist=0.0 and is expected to be 0.
+bitcount.LICM.NumLoops=6.0 was within 14.285714285714286% expected within 15.0%.
+bitcount.LICM.NumLoopsWithCall=2.0 was within 33.333333333333336% expected within 15.0%.
+bitcount.LICM check NumLoopsWithCall count.
+bitcount.LICM.NumLoopsNoLoads=0.0 and is expected to be 0.
+bitcount.LICM.NumLoopsNoStores=0.0 and is expected to be 0.
+-----em3d.LICM------
+em3d.LICM.LICMBasic=0.0 was within 100.0% expected within 15.0%.
+em3d.LICM check LICMBasic count.
+em3d.LICM.LICMLoadHoist=0.0 was within 100.0% expected within 15.0%.
+em3d.LICM check LICMLoadHoist count.
+em3d.LICM.NumLoops=8.0 was within 42.857142857142854% expected within 15.0%.
+em3d.LICM check NumLoops count.
+em3d.LICM.NumLoopsWithCall=3.0 was within 57.142857142857146% expected within 15.0%.
+em3d.LICM check NumLoopsWithCall count.
+em3d.LICM.NumLoopsNoLoads=0.0 and is expected to be 0.
+em3d.LICM.NumLoopsNoStores=0.0 and is expected to be 0.
+-----l2lat.LICM------
+l2lat.LICM.LICMBasic=0.0 and is expected to be 0.
+l2lat.LICM.LICMLoadHoist=0.0 and is expected to be 0.
+l2lat.LICM.NumLoops=2.0 was within 33.333333333333336% expected within 15.0%.
+l2lat.LICM check NumLoops count.
+l2lat.LICM.NumLoopsWithCall=0.0 and is expected to be 0.
+l2lat.LICM.NumLoopsNoLoads=0.0 and is expected to be 0.
+l2lat.LICM.NumLoopsNoStores=0.0 and is expected to be 0.
+-----qsort.LICM------
+qsort.LICM.LICMBasic=0.0 and is expected to be 0.
+qsort.LICM.LICMLoadHoist=0.0 and is expected to be 0.
+qsort.LICM.NumLoops=2.0 was within 0.0% expected within 15.0%.
+qsort.LICM.NumLoopsWithCall=2.0 was within 0.0% expected within 15.0%.
+qsort.LICM.NumLoopsNoLoads=0.0 and is expected to be 0.
+qsort.LICM.NumLoopsNoStores=0.0 and is expected to be 0.
+-----sql.LICM------
+sql.LICM.LICMBasic=246.0 was within 48.53556485355649% expected within 15.0%.
+sql.LICM check LICMBasic count.
+sql.LICM.LICMLoadHoist=0.0 was within 100.0% expected within 15.0%.
+sql.LICM check LICMLoadHoist count.
+sql.LICM.NumLoops=844.0 was within 22.14022140221402% expected within 15.0%.
+sql.LICM check NumLoops count.
+sql.LICM.NumLoopsWithCall=530.0 was within 20.777279521674142% expected within 15.0%.
+sql.LICM check NumLoopsWithCall count.
+sql.LICM.NumLoopsNoLoads=0.0 and is expected to be 0.
+sql.LICM.NumLoopsNoStores=0.0 and is expected to be 0.
+-----fft.LICM------
+fft.LICM.LICMBasic=22.0 was within 64.51612903225806% expected within 15.0%.
+fft.LICM check LICMBasic count.
+fft.LICM.LICMLoadHoist=0.0 but expected to find > 1.
+fft.LICM check LICMLoadHoist count.
+fft.LICM.NumLoops=9.0 was within 25.0% expected within 15.0%.
+fft.LICM check NumLoops count.
+fft.LICM.NumLoopsWithCall=5.0 was within 28.571428571428573% expected within 15.0%.
+fft.LICM check NumLoopsWithCall count.
+fft.LICM.NumLoopsNoLoads=0.0 and is expected to be 0.
+fft.LICM.NumLoopsNoStores=0.0 and is expected to be 0.
+-----adpcm.LICM------
+adpcm.LICM.LICMBasic=0.0 and is expected to be 0.
+adpcm.LICM.LICMLoadHoist=0.0 and is expected to be 0.
+adpcm.LICM.NumLoops=3.0 was within 0.0% expected within 15.0%.
+adpcm.LICM.NumLoopsWithCall=1.0 was within 0.0% expected within 15.0%.
+adpcm.LICM.NumLoopsNoLoads=0.0 and is expected to be 0.
+adpcm.LICM.NumLoopsNoStores=0.0 and is expected to be 0.
+-----bh.LICM------
+bh.LICM.LICMBasic=54.0 was within 22.857142857142858% expected within 15.0%.
+bh.LICM check LICMBasic count.
+bh.LICM.LICMLoadHoist=0.0 but expected to find > 1.
+bh.LICM check LICMLoadHoist count.
+bh.LICM.NumLoops=35.0 was within 45.3125% expected within 15.0%.
+bh.LICM check NumLoops count.
+bh.LICM.NumLoopsWithCall=14.0 was within 26.31578947368421% expected within 15.0%.
+bh.LICM check NumLoopsWithCall count.
+bh.LICM.NumLoopsNoLoads=0.0 and is expected to be 0.
+bh.LICM.NumLoopsNoStores=0.0 and is expected to be 0.
+-----hanoi.LICM------
+hanoi.LICM.LICMBasic=0.0 and is expected to be 0.
+hanoi.LICM.LICMLoadHoist=0.0 and is expected to be 0.
+hanoi.LICM.NumLoops=1.0 was within 0.0% expected within 15.0%.
+hanoi.LICM.NumLoopsWithCall=1.0 was within 0.0% expected within 15.0%.
+hanoi.LICM.NumLoopsNoLoads=0.0 and is expected to be 0.
+hanoi.LICM.NumLoopsNoStores=0.0 and is expected to be 0.
+-----sha.LICM------
+sha.LICM.LICMBasic=10.0 was within 0.0% expected within 15.0%.
+sha.LICM.LICMLoadHoist=0.0 and is expected to be 0.
+sha.LICM.NumLoops=10.0 was within 0.0% expected within 15.0%.
+sha.LICM.NumLoopsWithCall=3.0 was within 0.0% expected within 15.0%.
+sha.LICM.NumLoopsNoLoads=0.0 and is expected to be 0.
+sha.LICM.NumLoopsNoStores=0.0 and is expected to be 0.
+-----susan.LICM------
+susan.LICM.LICMBasic=74.0 was within 51.63398692810458% expected within 15.0%.
+susan.LICM check LICMBasic count.
+susan.LICM.LICMLoadHoist=0.0 was within 100.0% expected within 15.0%.
+susan.LICM check LICMLoadHoist count.
+susan.LICM.NumLoops=27.0 was within 42.5531914893617% expected within 15.0%.
+susan.LICM check NumLoops count.
+susan.LICM.NumLoopsWithCall=12.0 was within 33.333333333333336% expected within 15.0%.
+susan.LICM check NumLoopsWithCall count.
+susan.LICM.NumLoopsNoLoads=0.0 and is expected to be 0.
+susan.LICM.NumLoopsNoStores=0.0 and is expected to be 0.
+-----arm.LICM------
+arm.LICM.LICMBasic=1.0 was within 0.0% expected within 15.0%.
+arm.LICM.LICMLoadHoist=0.0 was within 100.0% expected within 15.0%.
+arm.LICM check LICMLoadHoist count.
+arm.LICM.NumLoops=10.0 was within 0.0% expected within 15.0%.
+arm.LICM.NumLoopsWithCall=3.0 was within 25.0% expected within 15.0%.
+arm.LICM check NumLoopsWithCall count.
+arm.LICM.NumLoopsNoLoads=0.0 and is expected to be 0.
+arm.LICM.NumLoopsNoStores=0.0 and is expected to be 0.
+-----dijkstra.LICM------
+dijkstra.LICM.LICMBasic=0.0 and is expected to be 0.
+dijkstra.LICM.LICMLoadHoist=0.0 and is expected to be 0.
+dijkstra.LICM.NumLoops=5.0 was within 28.571428571428573% expected within 15.0%.
+dijkstra.LICM check NumLoops count.
+dijkstra.LICM.NumLoopsWithCall=3.0 was within 40.0% expected within 15.0%.
+dijkstra.LICM check NumLoopsWithCall count.
+dijkstra.LICM.NumLoopsNoLoads=0.0 and is expected to be 0.
+dijkstra.LICM.NumLoopsNoStores=0.0 and is expected to be 0.
+-----kmp.LICM------
+kmp.LICM.LICMBasic=0.0 and is expected to be 0.
+kmp.LICM.LICMLoadHoist=0.0 but expected to find > 1.
+kmp.LICM check LICMLoadHoist count.
+kmp.LICM.NumLoops=5.0 was within 28.571428571428573% expected within 15.0%.
+kmp.LICM check NumLoops count.
+kmp.LICM.NumLoopsWithCall=2.0 was within 50.0% expected within 15.0%.
+kmp.LICM check NumLoopsWithCall count.
+kmp.LICM.NumLoopsNoLoads=0.0 and is expected to be 0.
+kmp.LICM.NumLoopsNoStores=0.0 and is expected to be 0.
+-----patricia.LICM------
+patricia.LICM.LICMBasic=7.0 was within 46.15384615384615% expected within 15.0%.
+patricia.LICM check LICMBasic count.
+patricia.LICM.LICMLoadHoist=0.0 was within 100.0% expected within 15.0%.
+patricia.LICM check LICMLoadHoist count.
+patricia.LICM.NumLoops=10.0 was within 0.0% expected within 15.0%.
+patricia.LICM.NumLoopsWithCall=8.0 was within 0.0% expected within 15.0%.
+patricia.LICM.NumLoopsNoLoads=0.0 and is expected to be 0.
+patricia.LICM.NumLoopsNoStores=0.0 and is expected to be 0.
+-----smatrix.LICM------
+smatrix.LICM.LICMBasic=0.0 but expected to find > 1.
+smatrix.LICM check LICMBasic count.
+smatrix.LICM.LICMLoadHoist=0.0 was within 100.0% expected within 15.0%.
+smatrix.LICM check LICMLoadHoist count.
+smatrix.LICM.NumLoops=4.0 was within 55.55555555555556% expected within 15.0%.
+smatrix.LICM check NumLoops count.
+smatrix.LICM.NumLoopsWithCall=0.0 and is expected to be 0.
+smatrix.LICM.NumLoopsNoLoads=0.0 and is expected to be 0.
+smatrix.LICM.NumLoopsNoStores=0.0 and is expected to be 0.
