@@ -215,7 +215,11 @@ bool instructionDominatesLoopsExit(Instruction *I, Loop *L) {
     return false;
 }
 
-bool canMoveOutOfLoop(Loop *L, LoadInst *load) {
+bool canMoveOutOfLoop(Loop *L, BasicBlock::iterator loadIter) {
+    auto load = dyn_cast<LoadInst>(loadIter);
+    if (!load) {
+        return false;
+    }
     if (load->isVolatile())
         return false;
     Value *loadAddr = load->getPointerOperand();
@@ -234,15 +238,18 @@ bool canMoveOutOfLoop(Loop *L, LoadInst *load) {
             switch (instr->getOpcode()) {
             case Instruction::Store: {
                 StoreInst *store = cast<StoreInst>(instr);
+                hasAnyStore = true;
                 if (store->getPointerOperand() == loadAddr) {
                     hasStoreToAddress = true;
                 }
                 break;
             }
             case Instruction::Load: {
+                if (loadIter == instrIter) {
+                    continue;
+                }
                 LoadInst *load = cast<LoadInst>(instr);
                 if (load->getPointerOperand() == loadAddr) {
-                    hasAnyStore = true;
                 }
                 break;
             }
@@ -294,10 +301,11 @@ void loopInvariantCodeMotion(Loop *loop) {
     }
 
     for (auto basicBlock : blocks) {
-        for (auto instrPtr = basicBlock->begin();
-             instrPtr != basicBlock->end();) {
-            Instruction *I = &*instrPtr;
-            instrPtr++;
+        for (auto instIter = basicBlock->begin();
+             instIter != basicBlock->end();) {
+            Instruction *I = &*instIter;
+            auto copyIterator = instIter;
+            instIter++;
             if (loop->hasLoopInvariantOperands(I)) {
                 bool changed = false;
                 loop->makeLoopInvariant(I, changed);
@@ -307,8 +315,7 @@ void loopInvariantCodeMotion(Loop *loop) {
                 continue;
             } else if (auto load = dyn_cast<LoadInst>(I)) {
                 num_loads++;
-                if (canMoveOutOfLoop(loop, load)) {
-                    // Move I to preHeader
+                if (canMoveOutOfLoop(loop, copyIterator)) {
                     load->moveBefore(preHeader->getTerminator());
                     LICMLoadHoist++;
                 }
