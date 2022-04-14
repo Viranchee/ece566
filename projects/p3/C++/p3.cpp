@@ -285,7 +285,13 @@ bool canMoveOutOfLoop(Loop *L, BasicBlock::iterator loadIter) {
 }
 
 void loopInvariantCodeMotion(Loop *loop) {
+    auto blocks = loop->getBlocks();
+    if (blocks.size() == 0) {
+        return;
+    }
+
     NumLoops++;
+    
     auto preHeader = loop->getLoopPreheader();
     if (!preHeader) {
         LICMNoPreheader++;
@@ -295,10 +301,6 @@ void loopInvariantCodeMotion(Loop *loop) {
     uint num_loads = 0;
     uint num_calls = 0;
 
-    auto blocks = loop->getBlocks();
-    if (blocks.size() == 0) {
-        return;
-    }
 
     for (auto basicBlock : blocks) {
         for (auto instIter = basicBlock->begin();
