@@ -308,22 +308,15 @@ void loopInvariantCodeMotion(Loop *loop) {
             Instruction *I = &*instIter;
             auto copyIterator = instIter;
             instIter++;
-            switch (I->getOpcode()) {
-            case Instruction::Store: {
-                num_stores++;
-                break;
-            }
-            case Instruction::Load: {
+            // Analysis
+            if (isa<LoadInst>(I)) {
                 num_loads++;
-                break;
-            }
-            // case Instruction::CallBr: // Does not affect output
-            case Instruction::Call:
+            } else if (isa<StoreInst>(I)) {
+                num_stores++;
+            } else if (isa<CallInst>(I)) {
                 num_calls++;
-                break;
-            default:
-                break;
             }
+            // Move
             if (loop->hasLoopInvariantOperands(I)) {
                 bool changed = false;
                 loop->makeLoopInvariant(I, changed);
@@ -340,9 +333,9 @@ void loopInvariantCodeMotion(Loop *loop) {
                     LICMLoadHoist++;
                 }
             } else if (auto store = dyn_cast<StoreInst>(I)) {
-                // num_stores++;
+
             } else if (auto call = dyn_cast<CallInst>(I)) {
-                // num_calls++;
+
             }
         }
     }
