@@ -295,7 +295,7 @@ void loopInvariantCodeMotion(Loop *loop) {
     auto preHeader = loop->getLoopPreheader();
     if (!preHeader) {
         LICMNoPreheader++;
-        return;
+        // return;
     }
     uint num_stores = 0;
     uint num_loads = 0;
@@ -334,7 +334,9 @@ void loopInvariantCodeMotion(Loop *loop) {
             } else if (auto load = dyn_cast<LoadInst>(I)) {
                 // num_loads++;
                 if (canMoveOutOfLoop(loop, copyIterator)) {
-                    load->moveBefore(preHeader->getTerminator());
+                    if (preHeader) {
+                        load->moveBefore(preHeader->getTerminator());
+                    }
                     LICMLoadHoist++;
                 }
             } else if (auto store = dyn_cast<StoreInst>(I)) {
