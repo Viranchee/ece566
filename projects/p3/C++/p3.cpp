@@ -206,12 +206,24 @@ DomTreeNodeBase<BasicBlock> *getDomTree(Instruction *I) {
 }
 
 bool dominatesAllExits(Instruction *I, Loop *L) {
-    // auto domTree = getDomTree(I);
-    // DomTreeNodeBase<BasicBlock>::iterator it, end;
-    // SmallVector<BasicBlock *, 8> ExitBlocks;
-    // L->getExitBlocks(ExitBlocks);
-    // // TODO
-    return false;
+    auto domTree = getDomTree(I);
+    DomTreeNodeBase<BasicBlock>::iterator it, end;
+    SmallVector<BasicBlock *, 8> ExitBlocks;
+    L->getExitBlocks(ExitBlocks);
+
+    for (auto exitBlock : ExitBlocks) {
+        // For all blocks in domTree, check if it has exitBlock
+        for (it = domTree->begin(), end = domTree->end(); it != end; it++) {
+            BasicBlock *bb_next = (*it)->getBlock();
+            if (bb_next == exitBlock) {
+                // remove exitBlock from ExitBlocks
+                ExitBlocks.erase(std::remove(ExitBlocks.begin(),
+                                             ExitBlocks.end(), exitBlock),
+                                 ExitBlocks.end());
+            }
+        }
+    }
+    return ExitBlocks.empty();
 }
 
 bool canMoveOutOfLoop(Loop *L, LoadInst *load) {
@@ -320,16 +332,15 @@ void loopInvariantCodeMotion(Loop *L) {
 }
 
 // given a loop, return all the nested loops, including itself, recursively
-std::vector<Loop *> getNestedLoops(Loop *L) {
+static std::vector<Loop *> getNestedLoops(Loop *L) {
     std::vector<Loop *> nestedLoops;
-    for (auto subLoop : L->getSubLoops()) {
-        auto subNestedLoops = getNestedLoops(subLoop);
-        for (auto subNestedLoop : subNestedLoops) {
-            nestedLoops.push_back(subNestedLoop);
+    for (auto *subLoops : L->getSubLoops()) {
+        auto childNestedLoops = getNestedLoops(subLoops);
+        for (auto subLoop : childNestedLoops) {
+            nestedLoops.push_back(subLoop);
         }
-        // nestedLoops.push_back(subLoop);
+        nestedLoops.push_back(subLoops);
     }
-    nestedLoops.push_back(L);
     return nestedLoops;
 }
 
@@ -353,7 +364,7 @@ static void LoopInvariantCodeMotion(Module *M) {
         // iterate over all loops in the function
         for (auto L : *loops) {
             auto subLoops = getNestedLoops(L);
-            // subLoops.push_back(L);
+            subLoops.push_back(L);
             for (auto subLoop : subLoops) {
                 loopInvariantCodeMotion(subLoop);
             }
