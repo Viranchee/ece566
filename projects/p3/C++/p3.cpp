@@ -30,6 +30,9 @@
 #include "llvm/Support/ManagedStatic.h"
 #include "llvm/Support/SourceMgr.h"
 #include "llvm/Support/ToolOutputFile.h"
+#include "llvm/Transforms/Utils/LoopSimplify.h"
+#include "llvm/Transforms/Utils/LoopUtils.h"
+#include "llvm/Analysis/MemorySSAUpdater.h"
 
 using namespace llvm;
 
@@ -202,31 +205,69 @@ DomTreeNodeBase<BasicBlock> *getDomTree(Instruction *I) {
     return Node;
 }
 
-bool instructionDominatesLoopsExit(Instruction *I, Loop *L) {
-    auto loopExit = L->getExitBlock();
-    auto domTree = getDomTree(I);
-    DomTreeNodeBase<BasicBlock>::iterator it, end;
-    for (it = domTree->begin(), end = domTree->end(); it != end; it++) {
-        auto block = (*it)->getBlock();
-        if (block == loopExit) {
-            return true;
-        }
-    }
+bool dominatesAllExits(Instruction *I, Loop *L) {
+    // auto domTree = getDomTree(I);
+    // DomTreeNodeBase<BasicBlock>::iterator it, end;
+    // SmallVectorImpl<BasicBlock *> ExitBlocks;
+
+    // L->getExitBlocks(SmallVectorImpl<BasicBlock *> &ExitBlocks)
     return false;
 }
 
-void loopInvariantCodeMotion(Loop *loop) {
-    auto blocks = loop->getBlocks();
+bool canMoveOutOfLoop(Loop *L, LoadInst *load) {
+    auto addr = load->getPointerOperand();
+    // If load is volatile, return false
+    if (load->isVolatile()) {
+        return false;
+    }
+    bool isGlobal = isa<GlobalVariable>(addr);
+    bool isAlloca = isa<AllocaInst>(addr);
+    auto addInst = dyn_cast<Instruction>(addr);
+    bool isAllocaInsideLoop = L->contains(addInst);
+    bool hasStores = false;
+    bool hasAnyStores = false;
+    bool isLoopInvariant = L->isLoopInvariant(addr);
+
+    // Check if loop has any stores
+    auto blocks = L->getBlocks();
+    for (auto BB : blocks) {
+        for (auto instrPtr = BB->begin(); instrPtr != BB->end(); instrPtr++) {
+            auto *I = &*instrPtr;
+            if (isa<StoreInst>(I)) {
+                auto storeInst = cast<StoreInst>(I);
+                hasAnyStores = true;
+                if (storeInst->getPointerOperand() == addr) {
+                    hasStores = true;
+                }
+                break;
+            }
+        }
+    }
+
+    if (isGlobal && !hasStores) {
+        return false;
+    }
+    if (isAlloca && !hasStores && !isAllocaInsideLoop) {
+        return false;
+    }
+    if (!hasAnyStores && isLoopInvariant && dominatesAllExits(load, L)) {
+        return false;
+    }
+
+    return false;
+}
+
+void loopInvariantCodeMotion(Loop *L) {
+    auto blocks = L->getBlocks();
     if (blocks.size() == 0) {
         return;
     }
-
     NumLoops++;
 
-    auto preHeader = loop->getLoopPreheader();
+    auto preHeader = L->getLoopPreheader();
     if (!preHeader) {
         LICMNoPreheader++;
-        // return;
+        return;
     }
     uint num_stores = 0;
     uint num_loads = 0;
@@ -246,17 +287,20 @@ void loopInvariantCodeMotion(Loop *loop) {
                 num_calls++;
             }
             // Move
-            if (loop->hasLoopInvariantOperands(I)) {
+            if (L->hasLoopInvariantOperands(I)) {
                 bool changed = false;
-                loop->makeLoopInvariant(I, changed);
+                L->makeLoopInvariant(I, changed);
                 if (changed) {
-                    if (isa<LoadInst>(I)) {
-                        LICMLoadHoist++;
-                    }
                     LICMBasic++;
                     continue;
                 }
-            } else if (isa<LoadInst>(I)) {  
+            } else if (isa<LoadInst>(I)) {
+                auto load = cast<LoadInst>(I);
+                if (canMoveOutOfLoop(L, load)) {
+                    load->moveBefore(preHeader->getTerminator());
+                    LICMLoadHoist++;
+                    continue;
+                }
                 continue;
             }
         }
@@ -278,6 +322,7 @@ void loopInvariantCodeMotion(Loop *loop) {
 }
 
 static void LoopInvariantCodeMotion(Module *M) {
+    errs() << "Name " << M->getName() << "\n";
     // iterate over all functions in the module
     for (auto F = M->begin(); F != M->end(); F++) {
         // Get loop info for this function
@@ -294,8 +339,19 @@ static void LoopInvariantCodeMotion(Module *M) {
         loops->analyze(*DT);
 
         // iterate over all loops in the function
-        for (auto loop : *loops) {
-            loopInvariantCodeMotion(loop);
+        for (auto L : *loops) {
+            loopInvariantCodeMotion(L);//, DT, LI, nullptr);
         }
     }
+
+    // Print stats
+    errs() << "NumLoops: " << NumLoops << "\n";
+    errs() << "NumLoopsNoStore: " << NumLoopsNoStore << "\n";
+    errs() << "NumLoopsNoLoad: " << NumLoopsNoLoad << "\n";
+    errs() << "NumLoopsNoStoreWithLoad: " << NumLoopsNoStoreWithLoad << "\n";
+    errs() << "NumLoopsWithCall: " << NumLoopsWithCall << "\n";
+    errs() << "LICMBasic: " << LICMBasic << "\n";
+    errs() << "LICMLoadHoist: " << LICMLoadHoist << "\n";
+    errs() << "LICMNoPreheader: " << LICMNoPreheader << "\n";
+
 }
