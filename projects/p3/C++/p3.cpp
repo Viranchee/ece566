@@ -215,75 +215,6 @@ bool instructionDominatesLoopsExit(Instruction *I, Loop *L) {
     return false;
 }
 
-bool canMoveOutOfLoop(Loop *L, BasicBlock::iterator loadIter) {
-    auto load = dyn_cast<LoadInst>(loadIter);
-    if (!load) {
-        return false;
-    }
-    if (load->isVolatile())
-        return false;
-    Value *loadAddr = load->getPointerOperand();
-
-    bool isAddressGlobal = isa<GlobalVariable>(loadAddr);
-    bool isAddressAlloca = isa<AllocaInst>(loadAddr);
-    bool isAddressLoopInvariant = L->isLoopInvariant(loadAddr);
-    bool hasStoreToAddress = false;
-    bool hasAnyStore = false;
-    bool addressAllocaInLoop = false;
-
-    for (auto blocks : L->blocks()) {
-        for (auto instrIter = blocks->begin(); instrIter != blocks->end();
-             instrIter++) {
-            Instruction *instr = &*instrIter;
-            switch (instr->getOpcode()) {
-            case Instruction::Store: {
-                StoreInst *store = cast<StoreInst>(instr);
-                hasAnyStore = true;
-                if (store->getPointerOperand() == loadAddr) {
-                    hasStoreToAddress = true;
-                }
-                break;
-            }
-            case Instruction::Load: {
-                if (loadIter == instrIter) {
-                    continue;
-                }
-                LoadInst *load = cast<LoadInst>(instr);
-                if (load->getPointerOperand() == loadAddr) {
-                }
-                break;
-            }
-            case Instruction::Call: {
-                break;
-            }
-            default:
-                break;
-            }
-        }
-    }
-
-    // if (addr is a GlobalVariable and there are no possible stores to addr in
-    // L):
-    if (isAddressGlobal && !hasStoreToAddress) {
-        return true;
-    }
-
-    // if (addr is an AllocaInst and no possible stores to addr in L and
-    // AllocaInst is not inside the loop):
-    if (isAddressAlloca && !hasStoreToAddress && !addressAllocaInLoop) {
-        return true;
-    }
-
-    // if (there are no possible stores to any addr in L && addr is loop
-    // invariant && I dominates L’s exit):
-    // TODO: check if I dominates L’s exit
-    if (!hasAnyStore && isAddressLoopInvariant &&
-        instructionDominatesLoopsExit(load, L)) {
-        return true;
-    }
-    return false;
-}
-
 void loopInvariantCodeMotion(Loop *loop) {
     auto blocks = loop->getBlocks();
     if (blocks.size() == 0) {
@@ -291,7 +222,7 @@ void loopInvariantCodeMotion(Loop *loop) {
     }
 
     NumLoops++;
-    
+
     auto preHeader = loop->getLoopPreheader();
     if (!preHeader) {
         LICMNoPreheader++;
@@ -301,12 +232,10 @@ void loopInvariantCodeMotion(Loop *loop) {
     uint num_loads = 0;
     uint num_calls = 0;
 
-
     for (auto basicBlock : blocks) {
         for (auto instIter = basicBlock->begin();
              instIter != basicBlock->end();) {
             Instruction *I = &*instIter;
-            auto copyIterator = instIter;
             instIter++;
             // Analysis
             if (isa<LoadInst>(I)) {
@@ -321,21 +250,14 @@ void loopInvariantCodeMotion(Loop *loop) {
                 bool changed = false;
                 loop->makeLoopInvariant(I, changed);
                 if (changed) {
+                    if (isa<LoadInst>(I)) {
+                        LICMLoadHoist++;
+                    }
                     LICMBasic++;
                     continue;
                 }
-            } else if (auto load = dyn_cast<LoadInst>(I)) {
-                // num_loads++;
-                if (canMoveOutOfLoop(loop, copyIterator)) {
-                    if (preHeader) {
-                        load->moveBefore(preHeader->getTerminator());
-                    }
-                    LICMLoadHoist++;
-                }
-            } else if (auto store = dyn_cast<StoreInst>(I)) {
-
-            } else if (auto call = dyn_cast<CallInst>(I)) {
-
+            } else if (isa<LoadInst>(I)) {  
+                continue;
             }
         }
     }
