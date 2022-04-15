@@ -11,6 +11,7 @@
 #include "llvm/ADT/StringSet.h"
 #include "llvm/Analysis/InstructionSimplify.h"
 #include "llvm/Analysis/LoopInfo.h"
+#include "llvm/Analysis/MemorySSAUpdater.h"
 #include "llvm/Bitcode/BitcodeReader.h"
 #include "llvm/Bitcode/BitcodeWriter.h"
 #include "llvm/IR/BasicBlock.h"
@@ -32,7 +33,6 @@
 #include "llvm/Support/ToolOutputFile.h"
 #include "llvm/Transforms/Utils/LoopSimplify.h"
 #include "llvm/Transforms/Utils/LoopUtils.h"
-#include "llvm/Analysis/MemorySSAUpdater.h"
 
 using namespace llvm;
 
@@ -278,7 +278,8 @@ void loopInvariantCodeMotion(Loop *L) {
              instIter != basicBlock->end();) {
             Instruction *I = &*instIter;
             instIter++;
-            // Doing Analysis early helps autograder score, as hasLoopInvariant may remove loads, stores or calls
+            // Doing Analysis early helps autograder score, as hasLoopInvariant
+            // may remove loads, stores or calls
             if (isa<LoadInst>(I)) {
                 num_loads++;
             } else if (isa<StoreInst>(I)) {
@@ -369,5 +370,4 @@ static void LoopInvariantCodeMotion(Module *M) {
     errs() << "LICMBasic: " << LICMBasic << "\n";
     errs() << "LICMLoadHoist: " << LICMLoadHoist << "\n";
     errs() << "LICMNoPreheader: " << LICMNoPreheader << "\n";
-
 }
