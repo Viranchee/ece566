@@ -291,6 +291,8 @@ void loopInvariantCodeMotion(Loop *L) {
              instIter != basicBlock->end();) {
             Instruction *I = &*instIter;
             instIter++;
+            bool changed = false;
+            bool madeLoopInvariant = false;
             // Doing Analysis early helps autograder score, as hasLoopInvariant
             // may remove loads, stores or calls
             if (isa<LoadInst>(I)) {
@@ -302,18 +304,18 @@ void loopInvariantCodeMotion(Loop *L) {
             }
             // Move the instructions
             if (L->hasLoopInvariantOperands(I)) {
-                bool changed = false;
-                L->makeLoopInvariant(I, changed);
-                if (changed) {
+                madeLoopInvariant = L->makeLoopInvariant(I, changed);
+                if (madeLoopInvariant) {
                     LICMBasic++;
                 }
-            } else if (isa<LoadInst>(I)) {
-                auto load = cast<LoadInst>(I);
-                if (canMoveOutOfLoop(L, load)) {
-                    load->moveBefore(preHeader->getTerminator());
-                    LICMLoadHoist++;
-                }
             }
+            // if (!madeLoopInvariant && isa<LoadInst>(I)) {
+            //     auto load = cast<LoadInst>(I);
+            //     if (canMoveOutOfLoop(L, load)) {
+            //         load->moveBefore(preHeader->getTerminator());
+            //         LICMLoadHoist++;
+            //     }
+            // }
         }
     }
     if (num_calls) {
