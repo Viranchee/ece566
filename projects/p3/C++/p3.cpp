@@ -211,19 +211,20 @@ bool dominatesAllExits(Instruction *I, Loop *L) {
     SmallVector<BasicBlock *, 8> ExitBlocks;
     L->getExitBlocks(ExitBlocks);
 
+    auto numberOfExitBlocks = ExitBlocks.size();
+    int numberOfExitBlocksDominated = 0;
+    errs() << "number of exit blocks: " << numberOfExitBlocks << "\n";
     for (auto exitBlock : ExitBlocks) {
         // For all blocks in domTree, check if it has exitBlock
         for (it = domTree->begin(), end = domTree->end(); it != end; it++) {
             BasicBlock *bb_next = (*it)->getBlock();
             if (bb_next == exitBlock) {
-                // remove exitBlock from ExitBlocks
-                ExitBlocks.erase(std::remove(ExitBlocks.begin(),
-                                             ExitBlocks.end(), exitBlock),
-                                 ExitBlocks.end());
+                numberOfExitBlocksDominated++;
+                errs() << numberOfExitBlocksDominated << "BLOCKS DOMINATED\n";
             }
         }
     }
-    return ExitBlocks.empty();
+    return numberOfExitBlocksDominated == numberOfExitBlocks;
 }
 
 bool canMoveOutOfLoop(Loop *L, LoadInst *load) {
