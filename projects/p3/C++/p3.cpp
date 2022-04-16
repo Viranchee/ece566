@@ -245,20 +245,20 @@ bool canMoveOutOfLoop(Loop *L, LoadInst *load) {
     bool isLoopInvariant = L->isLoopInvariant(addr);
     // VIR CHECK: CHECK IF CODE WORKS TILL HERE WITHOUT SEGFAULTS
     // Check if loop has any stores
-    // auto blocks = L->getBlocks();
-    // for (auto BB : blocks) {
-    //     for (auto instrPtr = BB->begin(); instrPtr != BB->end(); instrPtr++) {
-    //         auto *I = &*instrPtr;
-    //         if (isa<StoreInst>(I)) {
-    //             auto storeInst = cast<StoreInst>(I);
-    //             hasAnyStores = true;
-    //             if (storeInst->getPointerOperand() == addr) {
-    //                 hasStores = true;
-    //             }
-    //             break;
-    //         }
-    //     }
-    // }
+    auto blocks = L->getBlocks();
+    for (auto BB : blocks) {
+        for (auto instrPtr = BB->begin(); instrPtr != BB->end(); instrPtr++) {
+            auto *I = &*instrPtr;
+            if (isa<StoreInst>(I)) {
+                auto storeInst = cast<StoreInst>(I);
+                hasAnyStores = true;
+                if (storeInst->getPointerOperand() == addr) {
+                    hasStores = true;
+                }
+                break;
+            }
+        }
+    }
 
     if (isGlobal && !hasStores) {
         return true;
