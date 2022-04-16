@@ -371,7 +371,6 @@ static void LoopInvariantCodeMotion(Module *M) {
             for (auto subLoop : subLoops) {
                 loopInvariantCodeMotion(subLoop);
             }
-            // loopInvariantCodeMotion(L);//, DT, LI, nullptr);
         }
     }
 
