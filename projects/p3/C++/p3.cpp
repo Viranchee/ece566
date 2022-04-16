@@ -193,96 +193,75 @@ static llvm::Statistic LICMNoPreheader = {
     "LICMNoPreheader",
     "absence of preheader prevents optimization"};
 
-DomTreeNodeBase<BasicBlock> *getDomTree(Instruction *I) {
-    auto *bb = I->getParent();
-    auto *F = bb->getParent();
-    DominatorTreeBase<BasicBlock, false> *DT =
-        new DominatorTreeBase<BasicBlock, false>();
-    DT->recalculate(*F); // F is Function*. Use one DominatorTreeBase and
-                         // recalculate tree for each function you visit
-    DomTreeNodeBase<BasicBlock> *Node =
-        DT->getNode(bb); // get Node from some basic block*
-    return Node;
-}
-
-bool dominatesAllExits(Instruction *I, Loop *L) {
-    auto domTree = getDomTree(I);
-    DomTreeNodeBase<BasicBlock>::iterator it, end;
+bool dominatesAllExits(Instruction *I,
+                       Loop *L,
+                       DominatorTreeBase<BasicBlock, false> *DT) {
     SmallVector<BasicBlock *, 8> ExitBlocks;
     L->getExitBlocks(ExitBlocks);
-
-    auto numberOfExitBlocks = ExitBlocks.size();
-    int numberOfExitBlocksDominated = 0;
-    errs() << "number of exit blocks: " << numberOfExitBlocks << "\n";
     for (auto exitBlock : ExitBlocks) {
-        // For all blocks in domTree, check if it has exitBlock
-        for (it = domTree->begin(), end = domTree->end(); it != end; it++) {
-            BasicBlock *bb_next = (*it)->getBlock();
-            if (bb_next == exitBlock) {
-                numberOfExitBlocksDominated++;
-                errs() << numberOfExitBlocksDominated << "BLOCKS DOMINATED\n";
-            }
+        bool dominated = DT->dominates(I->getParent(), exitBlock);
+        if (!dominated) {
+            return false;
         }
     }
-    return numberOfExitBlocksDominated == numberOfExitBlocks;
+    return true;
 }
 
-bool canMoveOutOfLoop(Loop *L, LoadInst *load) {
+bool canMoveOutOfLoop(Loop *L,
+                      LoadInst *load,
+                      DominatorTreeBase<BasicBlock, false> *DT) {
     auto addr = load->getPointerOperand();
     // If load is volatile, return false
     if (load->isVolatile()) {
         return false;
     }
-    bool isGlobal = isa<GlobalVariable>(addr);
-    bool isAlloca = isa<AllocaInst>(addr);
-    auto addrInst = dyn_cast<Instruction>(addr);
-    bool isAllocaInsideLoop = true;
-    if (addrInst) {
-        isAllocaInsideLoop = L->contains(addrInst);
-    }
-    bool hasStores = true;
-    bool hasAnyStores = true;
-    bool isLoopInvariant = L->isLoopInvariant(addr);
-    // VIR CHECK: CHECK IF CODE WORKS TILL HERE WITHOUT SEGFAULTS
+
+    bool hasStores = false;
+    bool hasAnyStores = false;
     // Check if loop has any stores
-    auto blocks = L->getBlocks();
-    for (auto BB : blocks) {
+    for (auto BB : L->getBlocks()) {
         for (auto instrPtr = BB->begin(); instrPtr != BB->end(); instrPtr++) {
             auto *I = &*instrPtr;
-            if (isa<StoreInst>(I)) {
-                auto storeInst = cast<StoreInst>(I);
+            if (auto store = dyn_cast<StoreInst>(I)) {
                 hasAnyStores = true;
-                if (storeInst->getPointerOperand() == addr) {
-                    hasStores = true;
+                hasStores = true;
+                if (store->getPointerOperand() == addr) {
                 }
-                break;
             }
         }
     }
 
-    if (isGlobal && !hasStores) {
+    bool isAllocaInsideLoop = false;
+    if (isa<AllocaInst>(addr)) {
+        if (auto addrInst = dyn_cast<Instruction>(addr)) {
+            isAllocaInsideLoop = L->contains(addrInst->getParent());
+        }
+    }
+
+    if (isa<GlobalVariable>(addr) && !hasStores) {
         return true;
     }
-    if (isAlloca && !hasStores && !isAllocaInsideLoop) {
+    if (isa<AllocaInst>(addr) && !hasStores && !isAllocaInsideLoop) {
         return true;
     }
-    if (!hasAnyStores && isLoopInvariant && false) {
+    if (!hasAnyStores && L->isLoopInvariant(addr) &&
+        dominatesAllExits(load, L, DT)) {
         return true;
     }
 
     return false;
 }
 
-void loopInvariantCodeMotion(Loop *L) {
-    auto blocks = L->getBlocks();
-    if (blocks.size() == 0) {
-        return;
-    }
+void loopInvariantCodeMotion(Loop *L,
+                             DominatorTreeBase<BasicBlock, false> *DT) {
     NumLoops++;
-
+    auto blocks = L->getBlocks();
     auto preHeader = L->getLoopPreheader();
     if (!preHeader) {
         LICMNoPreheader++;
+        return;
+    }
+    if (blocks.size() == 0) {
         return;
     }
     uint num_stores = 0;
@@ -294,8 +273,6 @@ void loopInvariantCodeMotion(Loop *L) {
              instIter != basicBlock->end();) {
             Instruction *I = &*instIter;
             instIter++;
-            bool changed = false;
-            bool madeLoopInvariant = false;
             // Doing Analysis early helps autograder score, as hasLoopInvariant
             // may remove loads, stores or calls
             if (isa<LoadInst>(I)) {
@@ -306,17 +283,17 @@ void loopInvariantCodeMotion(Loop *L) {
                 num_calls++;
             }
             // Move the instructions
+            bool changed = false;
+            bool madeLoopInvariant = false;
             if (L->hasLoopInvariantOperands(I)) {
                 madeLoopInvariant = L->makeLoopInvariant(I, changed);
                 if (madeLoopInvariant) {
                     LICMBasic++;
                 } else {
                     auto *load = dyn_cast<LoadInst>(I);
-                    if (load) {
-                        if (canMoveOutOfLoop(L, load)) {
-                            load->moveBefore(preHeader->getTerminator());
-                            LICMLoadHoist++;
-                        }
+                    if (load && canMoveOutOfLoop(L, load, DT)) {
+                        load->moveBefore(preHeader->getTerminator());
+                        LICMLoadHoist++;
                     }
                 }
             }
@@ -338,7 +315,7 @@ void loopInvariantCodeMotion(Loop *L) {
     }
 }
 
-// given a loop, return all the nested loops, including itself, recursively
+// make a loop which returns all the nested loops, recursively
 static std::vector<Loop *> getNestedLoops(Loop *L) {
     std::vector<Loop *> nestedLoops;
     for (auto *subLoops : L->getSubLoops()) {
@@ -357,8 +334,8 @@ static void LoopInvariantCodeMotion(Module *M) {
     for (auto F = M->begin(); F != M->end(); F++) {
         // Get loop info for this function
         auto *loops = new LoopInfoBase<BasicBlock, Loop>();
-        auto DT = new DominatorTreeBase<BasicBlock, false>();
-        auto func = &*F;
+        auto *DT = new DominatorTreeBase<BasicBlock, false>();
+        auto *func = &*F;
 
         // Check if func has a body
         if (func->empty()) {
@@ -373,7 +350,7 @@ static void LoopInvariantCodeMotion(Module *M) {
             auto subLoops = getNestedLoops(L);
             subLoops.push_back(L);
             for (auto subLoop : subLoops) {
-                loopInvariantCodeMotion(subLoop);
+                loopInvariantCodeMotion(subLoop, DT);
             }
         }
     }
