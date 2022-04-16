@@ -235,27 +235,30 @@ bool canMoveOutOfLoop(Loop *L, LoadInst *load) {
     }
     bool isGlobal = isa<GlobalVariable>(addr);
     bool isAlloca = isa<AllocaInst>(addr);
-    auto addInst = dyn_cast<Instruction>(addr);
-    bool isAllocaInsideLoop = L->contains(addInst);
-    bool hasStores = false;
-    bool hasAnyStores = false;
-    bool isLoopInvariant = L->isLoopInvariant(addr);
-
-    // Check if loop has any stores
-    auto blocks = L->getBlocks();
-    for (auto BB : blocks) {
-        for (auto instrPtr = BB->begin(); instrPtr != BB->end(); instrPtr++) {
-            auto *I = &*instrPtr;
-            if (isa<StoreInst>(I)) {
-                auto storeInst = cast<StoreInst>(I);
-                hasAnyStores = true;
-                if (storeInst->getPointerOperand() == addr) {
-                    hasStores = true;
-                }
-                break;
-            }
-        }
+    auto addrInst = dyn_cast<Instruction>(addr);
+    bool isAllocaInsideLoop = true;
+    if (addrInst) {
+        isAllocaInsideLoop = L->contains(addrInst);
     }
+    bool hasStores = true;
+    bool hasAnyStores = true;
+    bool isLoopInvariant = L->isLoopInvariant(addr);
+    // VIR CHECK: CHECK IF CODE WORKS TILL HERE WITHOUT SEGFAULTS
+    // Check if loop has any stores
+    // auto blocks = L->getBlocks();
+    // for (auto BB : blocks) {
+    //     for (auto instrPtr = BB->begin(); instrPtr != BB->end(); instrPtr++) {
+    //         auto *I = &*instrPtr;
+    //         if (isa<StoreInst>(I)) {
+    //             auto storeInst = cast<StoreInst>(I);
+    //             hasAnyStores = true;
+    //             if (storeInst->getPointerOperand() == addr) {
+    //                 hasStores = true;
+    //             }
+    //             break;
+    //         }
+    //     }
+    // }
 
     if (isGlobal && !hasStores) {
         return true;
@@ -263,7 +266,7 @@ bool canMoveOutOfLoop(Loop *L, LoadInst *load) {
     if (isAlloca && !hasStores && !isAllocaInsideLoop) {
         return true;
     }
-    if (!hasAnyStores && isLoopInvariant && dominatesAllExits(load, L)) {
+    if (!hasAnyStores && isLoopInvariant && false) {
         return true;
     }
 
@@ -307,15 +310,16 @@ void loopInvariantCodeMotion(Loop *L) {
                 madeLoopInvariant = L->makeLoopInvariant(I, changed);
                 if (madeLoopInvariant) {
                     LICMBasic++;
+                } else {
+                    auto *load = dyn_cast<LoadInst>(I);
+                    if (load) {
+                        if (canMoveOutOfLoop(L, load)) {
+                            load->moveBefore(preHeader->getTerminator());
+                            LICMLoadHoist++;
+                        }
+                    }
                 }
             }
-            // if (!madeLoopInvariant && isa<LoadInst>(I)) {
-            //     auto load = cast<LoadInst>(I);
-            //     if (canMoveOutOfLoop(L, load)) {
-            //         load->moveBefore(preHeader->getTerminator());
-            //         LICMLoadHoist++;
-            //     }
-            // }
         }
     }
     if (num_calls) {
