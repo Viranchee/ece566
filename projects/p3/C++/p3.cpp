@@ -44,31 +44,29 @@ static void print_csv_file(std::string outputfile);
 
 static cl::opt<std::string> InputFilename(cl::Positional,
                                           cl::desc("<input bitcode>"),
-                                          cl::Required,
-                                          cl::init("-"));
+                                          cl::Required, cl::init("-"));
 
 static cl::opt<std::string> OutputFilename(cl::Positional,
                                            cl::desc("<output bitcode>"),
-                                           cl::Required,
-                                           cl::init("out.bc"));
+                                           cl::Required, cl::init("out.bc"));
 
 static cl::opt<bool>
     Mem2Reg("mem2reg",
             cl::desc("Perform memory to register promotion before LICM."),
             cl::init(false));
 
-static cl::opt<bool>
-    CSE("cse", cl::desc("Perform CSE before LICM."), cl::init(false));
+static cl::opt<bool> CSE("cse", cl::desc("Perform CSE before LICM."),
+                         cl::init(false));
 
 static cl::opt<bool> NoLICM("no-licm",
                             cl::desc("Do not perform LICM optimization."),
                             cl::init(false));
 
-static cl::opt<bool>
-    Verbose("verbose", cl::desc("Verbose stats."), cl::init(false));
+static cl::opt<bool> Verbose("verbose", cl::desc("Verbose stats."),
+                             cl::init(false));
 
-static cl::opt<bool>
-    NoCheck("no", cl::desc("Do not check for valid IR."), cl::init(false));
+static cl::opt<bool> NoCheck("no", cl::desc("Do not check for valid IR."),
+                             cl::init(false));
 
 int main(int argc, char **argv) {
     // Parse command line arguments
@@ -133,8 +131,7 @@ int main(int argc, char **argv) {
 }
 
 static llvm::Statistic nFunctions = {"", "Functions", "number of functions"};
-static llvm::Statistic nInstructions = {"",
-                                        "Instructions",
+static llvm::Statistic nInstructions = {"", "Instructions",
                                         "number of instructions"};
 static llvm::Statistic nLoads = {"", "Loads", "number of loads"};
 static llvm::Statistic nStores = {"", "Stores", "number of stores"};
@@ -169,33 +166,24 @@ static void print_csv_file(std::string outputfile) {
 }
 
 static llvm::Statistic NumLoops = {"", "NumLoops", "number of loops analyzed"};
-static llvm::Statistic NumLoopsNoStore = {"",
-                                          "NumLoopsNoStore",
+static llvm::Statistic NumLoopsNoStore = {"", "NumLoopsNoStore",
                                           "number of loops without stores"};
-static llvm::Statistic NumLoopsNoLoad = {"",
-                                         "NumLoopsNoLoad",
+static llvm::Statistic NumLoopsNoLoad = {"", "NumLoopsNoLoad",
                                          "number of loops without loads"};
 static llvm::Statistic NumLoopsNoStoreWithLoad = {
-    "",
-    "NumLoopsNoStoreWithLoad",
+    "", "NumLoopsNoStoreWithLoad",
     "number of loops without store but with load"};
-static llvm::Statistic NumLoopsWithCall = {"",
-                                           "NumLoopsWithCall",
+static llvm::Statistic NumLoopsWithCall = {"", "NumLoopsWithCall",
                                            "number of loops with calls"};
 // add other stats
-static llvm::Statistic LICMBasic = {"",
-                                    "LICMBasic",
+static llvm::Statistic LICMBasic = {"", "LICMBasic",
                                     "basic loop invariant instructions"};
-static llvm::Statistic LICMLoadHoist = {"",
-                                        "LICMLoadHoist",
+static llvm::Statistic LICMLoadHoist = {"", "LICMLoadHoist",
                                         "loop invariant load instructions"};
 static llvm::Statistic LICMNoPreheader = {
-    "",
-    "LICMNoPreheader",
-    "absence of preheader prevents optimization"};
+    "", "LICMNoPreheader", "absence of preheader prevents optimization"};
 
-bool dominatesAllExits(Instruction *I,
-                       Loop *L,
+bool dominatesAllExits(Instruction *I, Loop *L,
                        DominatorTreeBase<BasicBlock, false> *DT) {
     SmallVector<BasicBlock *, 8> ExitBlocks;
     L->getExitBlocks(ExitBlocks);
@@ -226,8 +214,7 @@ bool hasStoreToSameAddress(const StoreInst *store, const Value *loadAddr) {
     return hasStores;
 }
 
-bool canMoveOutOfLoop(Loop *L,
-                      LoadInst *load,
+bool canMoveOutOfLoop(Loop *L, LoadInst *load,
                       DominatorTreeBase<BasicBlock, false> *DT) {
     const Value *loadAddr = load->getPointerOperand();
     // If load is volatile, return false
@@ -287,8 +274,7 @@ bool canMoveOutOfLoop(Loop *L,
     return false;
 }
 
-void moveLoopInvariants(Loop *L,
-                        Instruction *I,
+void moveLoopInvariants(Loop *L, Instruction *I,
                         DominatorTreeBase<BasicBlock, false> *DT) {
     // Move the instructions
     bool madeLoopInvariant = false;
