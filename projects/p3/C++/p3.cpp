@@ -224,7 +224,6 @@ bool canMoveOutOfLoop(Loop *L, LoadInst *load,
 
     bool hasStores = false;
     bool hasAnyStores = false;
-
     bool isAlloca = isa<AllocaInst>(loadAddr);
 
     // Going through all the instructions in the loop
@@ -336,8 +335,6 @@ void loopInvariantCodeMotion(Loop *L,
     if (num_loads == 0) {
         NumLoopsNoLoad++;
     }
-    // TODO: Do we need to check if the stores and loads are to the same
-    // loadAddr?
     if (num_stores == 0 && num_loads > 0) {
         NumLoopsNoStoreWithLoad++;
     }
