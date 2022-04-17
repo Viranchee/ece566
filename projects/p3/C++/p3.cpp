@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <vector>
 
 #include "llvm-c/Core.h"
 
@@ -210,7 +211,7 @@ bool dominatesAllExits(Instruction *I,
 bool canMoveOutOfLoop(Loop *L,
                       LoadInst *load,
                       DominatorTreeBase<BasicBlock, false> *DT) {
-    auto loadAddr = load->getPointerOperand();
+    const Value *loadAddr = load->getPointerOperand();
     // If load is volatile, return false
     if (load->isVolatile()) {
         return false;
@@ -224,19 +225,22 @@ bool canMoveOutOfLoop(Loop *L,
     // Going through all the instructions in the loop
     for (auto BB : L->getBlocks()) {
         for (auto instrPtr = BB->begin(); instrPtr != BB->end(); instrPtr++) {
-            auto *I = &*instrPtr;
+            const Instruction *I = &*instrPtr;
             switch (I->getOpcode()) {
             case Instruction::Store: {
-                auto *store = cast<StoreInst>(I);
-                auto storeAddr = store->getPointerOperand();
+                const StoreInst *store = cast<StoreInst>(I);
+                const Value *storeAddr = store->getPointerOperand();
                 hasAnyStores = true;
-                if (auto alloca = dyn_cast<AllocaInst>(storeAddr)) {
+                if (const AllocaInst *alloca =
+                        dyn_cast<AllocaInst>(storeAddr)) {
                     if (alloca == loadAddr) {
                         hasStores = true;
                     }
-                } else if (auto gep = dyn_cast<GetElementPtrInst>(storeAddr)) {
-                    hasStores = true;
-                } else if (auto global = dyn_cast<GlobalVariable>(storeAddr)) {
+                    // } else if (auto gep =
+                    // dyn_cast<GetElementPtrInst>(storeAddr)) { hasStores =
+                    // true;
+                } else if (const GlobalVariable *global =
+                               dyn_cast<GlobalVariable>(storeAddr)) {
                     if (global == loadAddr) {
                         hasStores = true;
                     }
@@ -246,7 +250,7 @@ bool canMoveOutOfLoop(Loop *L,
                 break;
             }
             case Instruction::Call: {
-                auto call = cast<CallInst>(I);
+                const CallInst *call = cast<CallInst>(I);
                 if (!call->isIdempotent()) {
                     hasAnyStores = true;
                     hasStores = true;
@@ -262,7 +266,7 @@ bool canMoveOutOfLoop(Loop *L,
 
     bool isAllocaInsideLoop = false;
     if (isAlloca) {
-        if (auto addrInst = dyn_cast<Instruction>(loadAddr)) {
+        if (const Instruction *addrInst = dyn_cast<Instruction>(loadAddr)) {
             isAllocaInsideLoop = L->contains(addrInst->getParent());
         }
     }
@@ -305,8 +309,8 @@ void moveLoopInvariants(Loop *L,
 void loopInvariantCodeMotion(Loop *L,
                              DominatorTreeBase<BasicBlock, false> *DT) {
     NumLoops++;
-    auto blocks = L->getBlocks();
-    auto preHeader = L->getLoopPreheader();
+    const ArrayRef<BasicBlock *> blocks = L->getBlocks();
+    const BasicBlock *preHeader = L->getLoopPreheader();
     if (!preHeader) {
         LICMNoPreheader++;
         return;
@@ -355,7 +359,7 @@ void loopInvariantCodeMotion(Loop *L,
 static std::vector<Loop *> getNestedLoops(Loop *L) {
     std::vector<Loop *> nestedLoops;
     for (auto *subloop : L->getSubLoops()) {
-        auto childNestedLoops = getNestedLoops(subloop);
+        const std::vector<Loop *> childNestedLoops = getNestedLoops(subloop);
         for (auto subLoop : childNestedLoops) {
             nestedLoops.push_back(subLoop);
         }
