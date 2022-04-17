@@ -208,6 +208,24 @@ bool dominatesAllExits(Instruction *I,
     return true;
 }
 
+bool hasStoreToSameAddress(const StoreInst *store, const Value *loadAddr) {
+    bool hasStores = false;
+    const Value *storeAddr = store->getPointerOperand();
+    if (const AllocaInst *alloca = dyn_cast<AllocaInst>(storeAddr)) {
+        if (alloca == loadAddr) {
+            hasStores = true;
+        }
+    } else if (const GlobalVariable *global =
+                   dyn_cast<GlobalVariable>(storeAddr)) {
+        if (global == loadAddr) {
+            hasStores = true;
+        }
+    } else {
+        hasStores = true;
+    }
+    return hasStores;
+}
+
 bool canMoveOutOfLoop(Loop *L,
                       LoadInst *load,
                       DominatorTreeBase<BasicBlock, false> *DT) {
@@ -228,25 +246,9 @@ bool canMoveOutOfLoop(Loop *L,
             const Instruction *I = &*instrPtr;
             switch (I->getOpcode()) {
             case Instruction::Store: {
-                const StoreInst *store = cast<StoreInst>(I);
-                const Value *storeAddr = store->getPointerOperand();
+                auto store = cast<StoreInst>(I);
                 hasAnyStores = true;
-                if (const AllocaInst *alloca =
-                        dyn_cast<AllocaInst>(storeAddr)) {
-                    if (alloca == loadAddr) {
-                        hasStores = true;
-                    }
-                    // } else if (auto gep =
-                    // dyn_cast<GetElementPtrInst>(storeAddr)) { hasStores =
-                    // true;
-                } else if (const GlobalVariable *global =
-                               dyn_cast<GlobalVariable>(storeAddr)) {
-                    if (global == loadAddr) {
-                        hasStores = true;
-                    }
-                } else {
-                    hasStores = true;
-                }
+                hasStores = hasStores || hasStoreToSameAddress(store, loadAddr);
                 break;
             }
             case Instruction::Call: {
@@ -289,19 +291,19 @@ void moveLoopInvariants(Loop *L,
                         Instruction *I,
                         DominatorTreeBase<BasicBlock, false> *DT) {
     // Move the instructions
-    auto preHeader = L->getLoopPreheader();
-    bool changed = false;
     bool madeLoopInvariant = false;
     if (L->hasLoopInvariantOperands(I)) {
+        bool changed = false;
         madeLoopInvariant = L->makeLoopInvariant(I, changed);
-        if (madeLoopInvariant) {
-            LICMBasic++;
-        } else {
-            auto *load = dyn_cast<LoadInst>(I);
-            if (load && canMoveOutOfLoop(L, load, DT)) {
-                load->moveBefore(preHeader->getTerminator());
-                LICMLoadHoist++;
-            }
+    }
+    if (madeLoopInvariant) {
+        LICMBasic++;
+    } else {
+        auto *load = dyn_cast<LoadInst>(I);
+        if (load && canMoveOutOfLoop(L, load, DT)) {
+            auto preHeader = L->getLoopPreheader();
+            load->moveBefore(preHeader->getTerminator());
+            LICMLoadHoist++;
         }
     }
 }
