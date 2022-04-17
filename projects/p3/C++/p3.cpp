@@ -252,6 +252,27 @@ bool canMoveOutOfLoop(Loop *L,
     return false;
 }
 
+void moveLoopInvariants(Loop *L,
+                        Instruction *I,
+                        DominatorTreeBase<BasicBlock, false> *DT) {
+    // Move the instructions
+    auto preHeader = L->getLoopPreheader();
+    bool changed = false;
+    bool madeLoopInvariant = false;
+    if (L->hasLoopInvariantOperands(I)) {
+        madeLoopInvariant = L->makeLoopInvariant(I, changed);
+        if (madeLoopInvariant) {
+            LICMBasic++;
+        } else {
+            auto *load = dyn_cast<LoadInst>(I);
+            if (load && canMoveOutOfLoop(L, load, DT)) {
+                load->moveBefore(preHeader->getTerminator());
+                LICMLoadHoist++;
+            }
+        }
+    }
+}
+
 void loopInvariantCodeMotion(Loop *L,
                              DominatorTreeBase<BasicBlock, false> *DT) {
     NumLoops++;
@@ -282,21 +303,7 @@ void loopInvariantCodeMotion(Loop *L,
             } else if (isa<CallInst>(I)) {
                 num_calls++;
             }
-            // Move the instructions
-            bool changed = false;
-            bool madeLoopInvariant = false;
-            if (L->hasLoopInvariantOperands(I)) {
-                madeLoopInvariant = L->makeLoopInvariant(I, changed);
-                if (madeLoopInvariant) {
-                    LICMBasic++;
-                } else {
-                    auto *load = dyn_cast<LoadInst>(I);
-                    if (load && canMoveOutOfLoop(L, load, DT)) {
-                        load->moveBefore(preHeader->getTerminator());
-                        LICMLoadHoist++;
-                    }
-                }
-            }
+            moveLoopInvariants(L, I, DT);
         }
     }
     if (num_calls) {
