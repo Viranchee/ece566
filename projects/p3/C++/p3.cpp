@@ -318,12 +318,12 @@ void loopInvariantCodeMotion(Loop *L,
 // make a loop which returns all the nested loops, recursively
 static std::vector<Loop *> getNestedLoops(Loop *L) {
     std::vector<Loop *> nestedLoops;
-    for (auto *subLoops : L->getSubLoops()) {
-        auto childNestedLoops = getNestedLoops(subLoops);
+    for (auto *subloop : L->getSubLoops()) {
+        auto childNestedLoops = getNestedLoops(subloop);
         for (auto subLoop : childNestedLoops) {
             nestedLoops.push_back(subLoop);
         }
-        nestedLoops.push_back(subLoops);
+        nestedLoops.push_back(subloop);
     }
     return nestedLoops;
 }
