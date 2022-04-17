@@ -210,7 +210,7 @@ bool dominatesAllExits(Instruction *I,
 bool canMoveOutOfLoop(Loop *L,
                       LoadInst *load,
                       DominatorTreeBase<BasicBlock, false> *DT) {
-    auto addr = load->getPointerOperand();
+    auto loadAddr = load->getPointerOperand();
     // If load is volatile, return false
     if (load->isVolatile()) {
         return false;
@@ -218,33 +218,62 @@ bool canMoveOutOfLoop(Loop *L,
 
     bool hasStores = false;
     bool hasAnyStores = false;
-    // Check if loop has any stores
+
+    bool isAlloca = isa<AllocaInst>(loadAddr);
+
+    // Going through all the instructions in the loop
     for (auto BB : L->getBlocks()) {
         for (auto instrPtr = BB->begin(); instrPtr != BB->end(); instrPtr++) {
             auto *I = &*instrPtr;
-            if (auto store = dyn_cast<StoreInst>(I)) {
+            switch (I->getOpcode()) {
+            case Instruction::Store: {
+                auto *store = cast<StoreInst>(I);
+                auto storeAddr = store->getPointerOperand();
                 hasAnyStores = true;
-                hasStores = true;
-                if (store->getPointerOperand() == addr) {
+                if (auto alloca = dyn_cast<AllocaInst>(storeAddr)) {
+                    if (alloca == loadAddr) {
+                        hasStores = true;
+                    }
+                } else if (auto gep = dyn_cast<GetElementPtrInst>(storeAddr)) {
+                    hasStores = true;
+                } else if (auto global = dyn_cast<GlobalVariable>(storeAddr)) {
+                    if (global == loadAddr) {
+                        hasStores = true;
+                    }
+                } else {
+                    hasStores = true;
                 }
+                break;
+            }
+            case Instruction::Call: {
+                auto call = cast<CallInst>(I);
+                if (!call->isIdempotent()) {
+                    hasAnyStores = true;
+                    hasStores = true;
+                }
+                break;
+            }
+            default: {
+                break;
+            }
             }
         }
     }
 
     bool isAllocaInsideLoop = false;
-    if (isa<AllocaInst>(addr)) {
-        if (auto addrInst = dyn_cast<Instruction>(addr)) {
+    if (isAlloca) {
+        if (auto addrInst = dyn_cast<Instruction>(loadAddr)) {
             isAllocaInsideLoop = L->contains(addrInst->getParent());
         }
     }
 
-    if (isa<GlobalVariable>(addr) && !hasStores) {
+    if (isa<GlobalVariable>(loadAddr) && !hasStores) {
         return true;
     }
-    if (isa<AllocaInst>(addr) && !hasStores && !isAllocaInsideLoop) {
+    if (isAlloca && !hasStores && !isAllocaInsideLoop) {
         return true;
     }
-    if (!hasAnyStores && L->isLoopInvariant(addr) &&
+    if (!hasAnyStores && L->isLoopInvariant(loadAddr) &&
         dominatesAllExits(load, L, DT)) {
         return true;
     }
