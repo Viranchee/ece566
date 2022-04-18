@@ -183,8 +183,8 @@ static llvm::Statistic LICMLoadHoist = {"", "LICMLoadHoist",
 static llvm::Statistic LICMNoPreheader = {
     "", "LICMNoPreheader", "absence of preheader prevents optimization"};
 
-bool dominatesAllExits(Instruction *I, Loop *L,
-                       DominatorTreeBase<BasicBlock, false> *DT) {
+bool dominatesAllExits(const Instruction *I, const Loop *L,
+                      const DominatorTreeBase<BasicBlock, false> *DT) {
     SmallVector<BasicBlock *, 8> ExitBlocks;
     L->getExitBlocks(ExitBlocks);
     for (auto exitBlock : ExitBlocks) {
@@ -215,7 +215,7 @@ bool hasStoreToSameAddress(const StoreInst *store, const Value *loadAddr) {
 }
 
 bool canMoveOutOfLoop(Loop *L, LoadInst *load,
-                      DominatorTreeBase<BasicBlock, false> *DT) {
+                      const DominatorTreeBase<BasicBlock, false> *DT) {
     const Value *loadAddr = load->getPointerOperand();
     // If load is volatile, return false
     if (load->isVolatile()) {
@@ -273,8 +273,9 @@ bool canMoveOutOfLoop(Loop *L, LoadInst *load,
     return false;
 }
 
-void moveLoopInvariants(Loop *L, Instruction *I,
-                        DominatorTreeBase<BasicBlock, false> *DT) {
+void moveLoopInvariants(Loop *L, const BasicBlock::iterator iter,
+                       const DominatorTreeBase<BasicBlock, false> *DT) {
+    Instruction *I = &*iter;
     // Move the instructions
     bool madeLoopInvariant = false;
     if (L->hasLoopInvariantOperands(I)) {
@@ -313,7 +314,6 @@ void loopInvariantCodeMotion(Loop *L,
         for (auto instIter = basicBlock->begin();
              instIter != basicBlock->end();) {
             Instruction *I = &*instIter;
-            instIter++;
             // Doing Analysis early helps autograder score, as hasLoopInvariant
             // may remove loads, stores or calls
             if (isa<LoadInst>(I)) {
@@ -323,7 +323,10 @@ void loopInvariantCodeMotion(Loop *L,
             } else if (isa<CallInst>(I)) {
                 num_calls++;
             }
-            moveLoopInvariants(L, I, DT);
+
+            auto copyIter = instIter;
+            instIter++;
+            moveLoopInvariants(L, copyIter, DT);
         }
     }
     if (num_calls) {
