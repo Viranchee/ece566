@@ -231,7 +231,7 @@ bool isSameAddress(const Value *addr1, const Value *addr2) {
     return isSame;
 }
 
-bool canMoveStoreOutOfLoop(const Loop *L,const StoreInst *store,
+bool canMoveStoreOutOfLoop(const Loop *L, const StoreInst *store,
                            const DominatorTreeBase<BasicBlock, false> *DT) {
     //   Requirements:
     // 1. Always store to same address
@@ -254,10 +254,29 @@ bool canMoveStoreOutOfLoop(const Loop *L,const StoreInst *store,
             const Instruction *I = &*instrPtr;
             switch (I->getOpcode()) {
             case Instruction::Load: {
-                auto load = cast<LoadInst>(I);
+                const LoadInst *load = cast<LoadInst>(I);
                 hasAnyLoads = true;
                 hasLoads = hasLoads ||
                            isSameAddress(load->getPointerOperand(), storeAddr);
+                break;
+            }
+            case Instruction::Store: {
+                if (store == I) {
+                    continue;
+                }
+                hasAnyLoads = true;
+                const StoreInst *store2 = cast<StoreInst>(I);
+                if (isSameAddress(store2->getPointerOperand(), storeAddr)) {
+                    hasLoads = true;
+                }
+                break;
+            }
+            case Instruction::Call: {
+                const CallInst *call = cast<CallInst>(I);
+                if (call->isIdempotent()) {
+                    hasAnyLoads = true;
+                    hasLoads = true;
+                }
                 break;
             }
             default: {
@@ -289,7 +308,7 @@ bool canMoveStoreOutOfLoop(const Loop *L,const StoreInst *store,
     return false;
 }
 
-bool canMoveLoadOutOfLoop(const Loop *L,const LoadInst *load,
+bool canMoveLoadOutOfLoop(const Loop *L, const LoadInst *load,
                           const DominatorTreeBase<BasicBlock, false> *DT) {
     const Value *loadAddr = load->getPointerOperand();
     // If load is volatile, return false
@@ -349,8 +368,39 @@ bool canMoveLoadOutOfLoop(const Loop *L,const LoadInst *load,
     return false;
 }
 
+// Copy `store` on each exit edge (insert a new block between the
+// source and destination blocks of each exit edge and add a copy of
+// `store` to that block)
+void sinkStore(const Loop *L, const StoreInst *store,
+               DominatorTreeBase<BasicBlock, false> *DT) {
+    //    Get all the exit edges of the loop
+    SmallVector<BasicBlock *, 8> ExitBlocks;
+    L->getExitBlocks(ExitBlocks);
+
+    //   For each exit edge, create a new block and add a copy of
+    //   `store` to that block
+    for (auto exitBlock : ExitBlocks) {
+        // Create a new block
+        
+        BasicBlock *newBlock = BasicBlock::Create(
+            exitBlock->getContext(), "", exitBlock->getParent(), exitBlock);
+        newBlock->moveAfter(exitBlock);
+
+        // Add a branch to the original exit block
+        BranchInst::Create(exitBlock, newBlock);
+
+        // Make copy of `store` inst
+        Instruction *storeClone = store->clone();
+        // Insert the new store before the terminator of newBlock
+        storeClone->insertBefore(newBlock->getTerminator());
+
+        // Update the dominator tree
+        DT->addNewBlock(newBlock, exitBlock);
+    }
+}
+
 void moveLoopInvariants(const Loop *L, const BasicBlock::iterator iter,
-                        const DominatorTreeBase<BasicBlock, false> *DT) {
+                        DominatorTreeBase<BasicBlock, false> *DT) {
     Instruction *I = &*iter;
     // Move the instructions
     bool madeLoopInvariant = false;
@@ -368,13 +418,14 @@ void moveLoopInvariants(const Loop *L, const BasicBlock::iterator iter,
         }
     } else if (auto *store = dyn_cast<StoreInst>(I)) {
         if (canMoveStoreOutOfLoop(L, store, DT)) {
+            sinkStore(L, store, DT);
             LICMStoreSink++;
         }
     }
 }
 
 void loopInvariantCodeMotion(const Loop *L,
-                             const DominatorTreeBase<BasicBlock, false> *DT) {
+                             DominatorTreeBase<BasicBlock, false> *DT) {
     NumLoops++;
     const ArrayRef<BasicBlock *> blocks = L->getBlocks();
     const BasicBlock *preHeader = L->getLoopPreheader();
@@ -424,7 +475,7 @@ void loopInvariantCodeMotion(const Loop *L,
 
 // make a loop which returns all the nested loops, recursively
 void workOnNestedLoops(const Loop *L,
-                       const DominatorTreeBase<BasicBlock, false> *DT) {
+                       DominatorTreeBase<BasicBlock, false> *DT) {
 
     for (auto *subloop : L->getSubLoops()) {
         workOnNestedLoops(subloop, DT);
