@@ -180,11 +180,13 @@ static llvm::Statistic LICMBasic = {"", "LICMBasic",
                                     "basic loop invariant instructions"};
 static llvm::Statistic LICMLoadHoist = {"", "LICMLoadHoist",
                                         "loop invariant load instructions"};
+static llvm::Statistic LICMStoreSink = {"", "LICMStoreSink",
+                                        "loop invariant store instructions"};
 static llvm::Statistic LICMNoPreheader = {
     "", "LICMNoPreheader", "absence of preheader prevents optimization"};
 
 bool dominatesAllExits(const Instruction *I, const Loop *L,
-                      const DominatorTreeBase<BasicBlock, false> *DT) {
+                       const DominatorTreeBase<BasicBlock, false> *DT) {
     SmallVector<BasicBlock *, 8> ExitBlocks;
     L->getExitBlocks(ExitBlocks);
     for (auto exitBlock : ExitBlocks) {
@@ -196,22 +198,21 @@ bool dominatesAllExits(const Instruction *I, const Loop *L,
     return true;
 }
 
-bool hasStoreToSameAddress(const StoreInst *store, const Value *loadAddr) {
-    bool hasStores = false;
-    const Value *storeAddr = store->getPointerOperand();
-    if (const AllocaInst *alloca = dyn_cast<AllocaInst>(storeAddr)) {
-        if (alloca == loadAddr) {
-            hasStores = true;
+bool isSameAddress(const Value *addr1, const Value *addr2) {
+    bool isSame = false;
+    if (const AllocaInst *alloca = dyn_cast<AllocaInst>(addr1)) {
+        if (alloca == addr2) {
+            isSame = true;
         }
     } else if (const GlobalVariable *global =
-                   dyn_cast<GlobalVariable>(storeAddr)) {
-        if (global == loadAddr) {
-            hasStores = true;
+                   dyn_cast<GlobalVariable>(addr1)) {
+        if (global == addr2) {
+            isSame = true;
         }
     } else {
-        hasStores = true;
+        isSame = true;
     }
-    return hasStores;
+    return isSame;
 }
 
 bool canMoveOutOfLoop(Loop *L, LoadInst *load,
