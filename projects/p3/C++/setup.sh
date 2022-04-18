@@ -12,7 +12,7 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
     prefixPath="~"
 fi
 
-project=$prefixPath/ece566/
+project=$prefixPath/ece566
 
 # make 'build' directory, run 'cmake ..' and 'make' inside that directory
 mkdir build$docker
