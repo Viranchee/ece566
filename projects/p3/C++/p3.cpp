@@ -204,8 +204,7 @@ bool isSameAddress(const Value *addr1, const Value *addr2) {
         if (alloca == addr2) {
             isSame = true;
         }
-    } else if (const GlobalVariable *global =
-                   dyn_cast<GlobalVariable>(addr1)) {
+    } else if (const GlobalVariable *global = dyn_cast<GlobalVariable>(addr1)) {
         if (global == addr2) {
             isSame = true;
         }
@@ -215,8 +214,66 @@ bool isSameAddress(const Value *addr1, const Value *addr2) {
     return isSame;
 }
 
-bool canMoveOutOfLoop(Loop *L, LoadInst *load,
-                      const DominatorTreeBase<BasicBlock, false> *DT) {
+bool canMoveStoreOutOfLoop(Loop *L, StoreInst *store,
+                           const DominatorTreeBase<BasicBlock, false> *DT) {
+    //   Requirements:
+    // 1. Always store to same address
+    // 2. No loads can be present to same address
+    // 3. Always execute before loop exits
+
+    const Value *storeAddr = store->getPointerOperand();
+    // If store is volatile, return false
+    if (store->isVolatile()) {
+        return false;
+    }
+
+    bool hasLoads = false;
+    bool hasAnyLoads = false;
+    bool isAlloca = isa<AllocaInst>(storeAddr);
+
+    // Going through all the instructions in the loop
+    for (auto BB : L->getBlocks()) {
+        for (auto instrPtr = BB->begin(); instrPtr != BB->end(); instrPtr++) {
+            const Instruction *I = &*instrPtr;
+            switch (I->getOpcode()) {
+            case Instruction::Load: {
+                auto load = cast<LoadInst>(I);
+                hasAnyLoads = true;
+                hasLoads = hasLoads ||
+                           isSameAddress(load->getPointerOperand(), storeAddr);
+                break;
+            }
+            default: {
+                break;
+            }
+            }
+        }
+    }
+
+    bool isAllocaInsideLoop = false;
+    if (isAlloca) {
+        if (const Instruction *addrInst = dyn_cast<Instruction>(storeAddr)) {
+            isAllocaInsideLoop = L->contains(addrInst->getParent());
+        }
+    }
+
+    if (isa<GlobalVariable>(storeAddr) && !hasLoads) {
+        return true;
+    }
+    if (isAlloca && !hasLoads && !isAllocaInsideLoop) {
+        return true;
+    }
+    if (!hasAnyLoads && L->isLoopInvariant(storeAddr) &&
+        // 3. Always execute before loop exits
+        dominatesAllExits(store, L, DT)) {
+        return true;
+    }
+
+    return false;
+}
+
+bool canMoveLoadOutOfLoop(Loop *L, LoadInst *load,
+                          const DominatorTreeBase<BasicBlock, false> *DT) {
     const Value *loadAddr = load->getPointerOperand();
     // If load is volatile, return false
     if (load->isVolatile()) {
@@ -235,7 +292,8 @@ bool canMoveOutOfLoop(Loop *L, LoadInst *load,
             case Instruction::Store: {
                 auto store = cast<StoreInst>(I);
                 hasAnyStores = true;
-                hasStores = hasStores || isSameAddress(store->getPointerOperand(), loadAddr);
+                hasStores = hasStores ||
+                            isSameAddress(store->getPointerOperand(), loadAddr);
                 break;
             }
             case Instruction::Call: {
@@ -275,7 +333,7 @@ bool canMoveOutOfLoop(Loop *L, LoadInst *load,
 }
 
 void moveLoopInvariants(Loop *L, const BasicBlock::iterator iter,
-                       const DominatorTreeBase<BasicBlock, false> *DT) {
+                        const DominatorTreeBase<BasicBlock, false> *DT) {
     Instruction *I = &*iter;
     // Move the instructions
     bool madeLoopInvariant = false;
@@ -285,11 +343,15 @@ void moveLoopInvariants(Loop *L, const BasicBlock::iterator iter,
     }
     if (madeLoopInvariant) {
         LICMBasic++;
-    } else if (auto *load = dyn_cast<LoadInst>(I)){
-        if (canMoveOutOfLoop(L, load, DT)) {
+    } else if (auto *load = dyn_cast<LoadInst>(I)) {
+        if (canMoveLoadOutOfLoop(L, load, DT)) {
             auto preHeader = L->getLoopPreheader();
             load->moveBefore(preHeader->getTerminator());
             LICMLoadHoist++;
+        }
+    } else if (auto *store = dyn_cast<StoreInst>(I)) {
+        if (canMoveStoreOutOfLoop(L, store, DT)) {
+            LICMStoreSink++;
         }
     }
 }
@@ -392,4 +454,5 @@ static void LoopInvariantCodeMotion(Module *M) {
     errs() << "LICMBasic: " << LICMBasic << "\n";
     errs() << "LICMLoadHoist: " << LICMLoadHoist << "\n";
     errs() << "LICMNoPreheader: " << LICMNoPreheader << "\n";
+    errs() << "LICMStoreSink: " << LICMStoreSink << "\n";
 }
