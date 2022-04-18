@@ -204,8 +204,7 @@ bool isSameAddress(const Value *addr1, const Value *addr2) {
         if (alloca == addr2) {
             isSame = true;
         }
-    } else if (const GlobalVariable *global =
-                   dyn_cast<GlobalVariable>(addr1)) {
+    } else if (const GlobalVariable *global = dyn_cast<GlobalVariable>(addr1)) {
         if (global == addr2) {
             isSame = true;
         }
@@ -214,6 +213,22 @@ bool isSameAddress(const Value *addr1, const Value *addr2) {
     }
     return isSame;
 }
+
+Value *getAddressOf(const Instruction *LoadStore) {
+    Value *instAddr;
+    switch (LoadStore->getOpcode()) {
+    case Instruction::Load:
+        instAddr = LoadStore->getOperand(0);
+        break;
+    case Instruction::Store:
+        instAddr = LoadStore->getOperand(1);
+        break;
+    default:
+        instAddr = nullptr;
+    }
+    return instAddr;
+}
+
 
 bool canMoveOutOfLoop(Loop *L, LoadInst *load,
                       const DominatorTreeBase<BasicBlock, false> *DT) {
@@ -235,7 +250,8 @@ bool canMoveOutOfLoop(Loop *L, LoadInst *load,
             case Instruction::Store: {
                 auto store = cast<StoreInst>(I);
                 hasAnyStores = true;
-                hasStores = hasStores || hasStoreToSameAddress(store, loadAddr);
+                hasStores = hasStores ||
+                            isSameAddress(store->getPointerOperand(), loadAddr);
                 break;
             }
             case Instruction::Call: {
@@ -275,7 +291,7 @@ bool canMoveOutOfLoop(Loop *L, LoadInst *load,
 }
 
 void moveLoopInvariants(Loop *L, const BasicBlock::iterator iter,
-                       const DominatorTreeBase<BasicBlock, false> *DT) {
+                        const DominatorTreeBase<BasicBlock, false> *DT) {
     Instruction *I = &*iter;
     // Move the instructions
     bool madeLoopInvariant = false;
