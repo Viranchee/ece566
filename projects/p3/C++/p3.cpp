@@ -371,32 +371,25 @@ bool canMoveLoadOutOfLoop(const Loop *L, const LoadInst *load,
 // Copy `store` on each exit edge (insert a new block between the
 // source and destination blocks of each exit edge and add a copy of
 // `store` to that block)
-void sinkStore(const Loop *L, const StoreInst *store,
+void sinkStore(const Loop *L, StoreInst *store,
                DominatorTreeBase<BasicBlock, false> *DT) {
     //    Get all the exit edges of the loop
     SmallVector<BasicBlock *, 8> ExitBlocks;
     L->getExitBlocks(ExitBlocks);
 
     //   For each exit edge, create a new block and add a copy of
-    //   `store` to that block
+    //   `store` to that block. Update the DT as well
     for (auto exitBlock : ExitBlocks) {
-        // Create a new block
-        
         BasicBlock *newBlock = BasicBlock::Create(
             exitBlock->getContext(), "", exitBlock->getParent(), exitBlock);
         newBlock->moveAfter(exitBlock);
-
-        // Add a branch to the original exit block
         BranchInst::Create(exitBlock, newBlock);
-
-        // Make copy of `store` inst
         Instruction *storeClone = store->clone();
-        // Insert the new store before the terminator of newBlock
         storeClone->insertBefore(newBlock->getTerminator());
-
-        // Update the dominator tree
         DT->addNewBlock(newBlock, exitBlock);
     }
+    // Once store is cloned to all exit blocks, remove the original store
+    store->eraseFromParent();
 }
 
 void moveLoopInvariants(const Loop *L, const BasicBlock::iterator iter,
@@ -418,7 +411,7 @@ void moveLoopInvariants(const Loop *L, const BasicBlock::iterator iter,
         }
     } else if (auto *store = dyn_cast<StoreInst>(I)) {
         if (canMoveStoreOutOfLoop(L, store, DT)) {
-            sinkStore(L, store, DT);
+            // sinkStore(L, store, DT);
             LICMStoreSink++;
         }
     }
