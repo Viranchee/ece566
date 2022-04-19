@@ -64,9 +64,10 @@ BONUS: CSE Pass with DCE, Constant Propagation, redundant Load and Store elimina
     same as P2
 
 
+2. How many instructions were moved using your implementation of Loop Invariant Code Motion?
 
 
-2. How many instructions were moved using your implementation of Loop Invariant Code Motion? 
-How many instructions were moved per loop on average? 
-2. What happens to the average when you precede LICM with other optimizations, like mem-to-reg and CSE?
+3.  How many instructions were moved per loop on average?
+    What happens to the average when you precede LICM with other optimizations, like mem-to-reg and CSE?
+
 3. 566 only or 466 bonus: How many load instructions were moved versus non-load instructions?
