@@ -1,24 +1,27 @@
 # ECE 466/566 container for easy use on Windows, Linux, MacOS
 
-FROM ubuntu:21.10
+FROM ubuntu:latest
 
 LABEL maintainer="jtuck@ncsu.edu"
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-RUN apt-get update \
-  && apt-get clean \
-  && apt-get install -y --no-install-recommends ssh \
+RUN apt-get clean
+RUN apt-get update
+# RUN apt-get full-upgrade
+RUN apt-get install -y --no-install-recommends ssh \
       build-essential \
       gcc \
       g++ \
       gdb \
       cmake \
       rsync \
-      tar \
-      python \
+      tar
+RUN apt-get install -y --no-install-recommends ssh \
+      python2 \
       pip \
-      zlib1g-dev \
+      zlib1g-dev
+RUN apt-get install -y --no-install-recommends ssh \
       bison \
       libbison-dev \
       flex \
